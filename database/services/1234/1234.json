@@ -1,0 +1,27 @@
+{
+    "user_id": "1234",
+    "chat_history": [
+        {
+            "chat_id": "bi",
+            "from": "bot",
+            "timestamp": "2024-12-01T10:00:00Z",
+            "type": "text",
+            "content": "Hello, I need help with my account."
+        },
+        {
+            "chat_id": "002",
+            "from": "user",
+            "timestamp": "2024-12-02T11:15:00Z",
+            "type": "text",
+            "content": "Can you update my profile information?"
+        },
+        {
+            "chat_id": "003",
+            "from": "agent",
+            "timestamp": "2024-12-02T11:30:00Z",
+            "type": "text",
+            "content": "Sure, I can help with that. Please provide the details you want to update."
+        }
+    ],
+    "chat_history_summary": "lu"
+}
