@@ -2,6 +2,7 @@ import json
 from PIL import Image
 import io
 import base64
+import os
 
 class DatabaseManager:
     def __init__(self):
@@ -46,3 +47,4 @@ class DatabaseManager:
         except Exception as e:
             print(f"An error occurred while writing to {file_path}: {e}")
 
+    

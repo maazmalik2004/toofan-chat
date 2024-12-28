@@ -1,8 +1,7 @@
-# agents : summarizer, image to description, image description relavancy check, query answering, query preprocessing agent
-
 from langchain_google_genai import ChatGoogleGenerativeAI  # for interfacing with Gemini LLM
 from langchain_core.prompts import PromptTemplate  # for creating a prompt template
 from langchain_core.output_parsers import StrOutputParser  # for parsing the model's output
+from database_manager import DatabaseManager
 from mistralai import Mistral
 from dotenv import load_dotenv
 import os
@@ -47,15 +46,12 @@ class QueryPreprocessingAgent:
     def break_query(self, query):
         prompt = PromptTemplate.from_template("""
             Break the following query into component sub-queries while preserving the meaning of the queries.
-            Output each sub-query on a new line:
+            Output each sub-query on a new line
             Query: {query}
-            Sub-queries:
+            Sub-Queries                                  
         """)
-
         chain = prompt | self.gemini_client | StrOutputParser()
-
         response = chain.invoke(query)
-
         return [q.strip() for q in response.split("\n") if q.strip()]
 
     def augment_query(self, query):
@@ -63,13 +59,10 @@ class QueryPreprocessingAgent:
             Augment the following query into 3 variations while preserving the meaning of the query.
             Output each variant on a new line:
             Query: {query}
-            Variant queries:
+            Queries:                                 
         """)
-
         chain = prompt | self.gemini_client | StrOutputParser()
-
         response = chain.invoke(query)
-
         return [q.strip() for q in response.split("\n") if q.strip()]
     
 class SummarizingAgent:
@@ -79,7 +72,7 @@ class SummarizingAgent:
 
     def summarize_query(self, query):
         prompt = PromptTemplate.from_template("""
-            summarize the following query wihout loosing information.
+            summarize the following query. Avoid loosing meaning or information
             Query: {query}
             Summary:
         """)
@@ -104,7 +97,7 @@ class QueryAnsweringAgent():
             If you are not confident about the answer or the context does not contain the answer, be humble enough to accept you dont know.
                             
             <Query>{query}</Query>
-            <Context>{context}</Context>-
+            <Context>{context}</Context>
         """)
 
         chain = prompt | self.gemini_client | StrOutputParser()
@@ -113,107 +106,63 @@ class QueryAnsweringAgent():
                                  "context":context
                                 })
         return response
+
+class ImageDescriptionRelavancyCheckAgent():
+    def __init__(self, model = "gemini-1.5-flash"):
+        self.gemini_client = ChatGoogleGenerativeAI(model=model)
+        self.model = model
+
+    def answer_query(self, query, context, image_description):
+        prompt = PromptTemplate.from_template("""
+            You are an expert at determining whether an image is relavant to the context and user query based on its description
+            simply answer in 'yes' or 'no' only                                  
     
-query_summarizer = SummarizingAgent()
-output = query_summarizer.summarize_query("""4. Check for Cloudflare Issues
-Since the error mentions cloudflare, it’s possible that Cloudflare (a web performance and security company) is blocking or misrouting your request.
-Try making the request with a different IP address or network.
-Use a VPN or proxy to bypass potential geographical restrictions.
-Ensure your request includes the necessary headers.
-5. Inspect Your Local Environment
-If you are behind a corporate firewall or proxy, this might interfere with the request. Ensure your environment allows outgoing connections to the API endpoint.
-6. Test Outside Your Script
-Use a tool like Postman or cURL to test the API call manually. If it works, the issue is likely with your script.
-7. Contact the API Provider
-If none of the above work, contact the API provider to confirm if their service is operational or if they are experiencing issues.
-If you share your script's relevant portion or clarify what service/API you're working with, I can provide more specific guidance.""")
+            <Query>{query}</Query>
+            <Context>{context}</Context>
+            <ImageDescription>{image_description}</ImageDescription>                                  
+                                              
+        """)
 
-print(output)
-    
-# # query_preprocessor = QueryPreprocessingAgent()
-# # output = query_preprocessor.break_query("How does artificial intelligence impact global economies, and in what ways can it influence employment trends across different industries while addressing ethical concerns, such as data privacy and algorithmic bias, and how do governments and international organizations regulate its usage to ensure fairness and sustainability while fostering innovation?")
-# # output = query_preprocessor.augment_query("list down the core principles of indian democracy")
-# query_answering_agent = QueryAnsweringAgent()
-# output = query_answering_agent.answer_query("what is a nike",
-#                                  """Nike Shoe Details
+        chain = prompt | self.gemini_client | StrOutputParser()
 
-# 1. Nike Air Max 270
+        response = chain.invoke({"query":query,
+                                 "context":context,
+                                 "image_description":image_description
+                                })
+        return response
 
-# Description: The Nike Air Max 270 features Nike's largest Air unit in the heel, offering supreme comfort and style. It's inspired by the Air Max icons of the early 1990s.
+# # Initialize all agents
+# image_description_agent = ImageToDescriptionAgent(model="pixtral-12b-2409")
+# query_preprocessing_agent = QueryPreprocessingAgent(model="gemini-1.5-flash")
+# summarizing_agent = SummarizingAgent(model="gemini-1.5-flash")
+# query_answering_agent = QueryAnsweringAgent(model="gemini-1.5-flash")
+# image_relevancy_agent = ImageDescriptionRelavancyCheckAgent(model="gemini-1.5-flash")
 
-# Key Features:
+# # Sample Inputs
+# query = "What are the main features of the Eiffel Tower during sunset?"
+# context = "The Eiffel Tower is an iconic landmark in Paris, France, known for its intricate iron structure and beautiful lighting at sunset."
+# base_64_image = DatabaseManager().read_image("database/services/1234/rag_context/image.jpeg")
 
-# Breathable mesh upper for lightweight comfort.
+# # Step 1: Generate Description from Image
+# image_description = image_description_agent.generate_description(base_64_image)
+# print("Image Description:", image_description)
 
-# Foam midsole with large Max Air unit for cushioning.
+# # Step 2: Break Query into Sub-Queries
+# sub_queries = query_preprocessing_agent.break_query(query)
+# print("Sub-Queries:", sub_queries)
 
-# Rubber outsole for durability and traction.
+# # Step 3: Augment the Query
+# augmented_queries = query_preprocessing_agent.augment_query(query)
+# print("Augmented Queries:", augmented_queries)
 
-# Retail Price: $160
+# # Step 4: Summarize the Query
+# query_summary = summarizing_agent.summarize_query(context)
+# print("Query Summary:", query_summary)
 
-# Available Stores:
+# # Step 5: Answer the Query Using Context
+# query_answer = query_answering_agent.answer_query(query, context)
+# print("Query Answer:", query_answer)
 
-# Nike Official Website
-
-# Foot Locker
-
-# Finish Line
-
-# Dick’s Sporting Goods
-
-# 2. Nike Dunk Low Retro
-
-# Description: A classic that never goes out of style, the Nike Dunk Low Retro offers a timeless silhouette with bold color blocking and premium materials.
-
-# Key Features:
-
-# Low-top design for everyday versatility.
-
-# Premium leather upper for durability and style.
-
-# Foam midsole for lightweight cushioning.
-
-# Rubber outsole with pivot circle for excellent traction.
-
-# Retail Price: $110
-
-# Available Stores:
-
-# Nike Official Website
-
-# StockX
-
-# GOAT
-
-# Champs Sports
-
-# 3. Nike ZoomX Vaporfly Next% 2
-
-# Description: Designed for speed, the Nike ZoomX Vaporfly Next% 2 is engineered for long-distance runners aiming to achieve new personal records. This shoe is a favorite among elite marathon runners.
-
-# Key Features:
-
-# Lightweight and breathable mesh upper.
-
-# Full-length ZoomX foam midsole for energy return.
-
-# Carbon-fiber plate for propulsion with every step.
-
-# Grippy rubber outsole for superior traction.
-
-# Retail Price: $250
-
-# Available Stores:
-
-# Nike Official Website
-
-# Road Runner Sports
-
-# Running Warehouse
-
-# Fleet Feet
-
-# Each of these shoes offers unique features to cater to different needs, whether you're looking for everyday wear, classic streetwear, or elite running performance.""")
-
-# print(output)
-
+# # Step 6: Check Relevance of the Image Description
+# is_relevant = image_relevancy_agent.answer_query(query, context, image_description)
+# print("Is Image Relevant?", is_relevant)
