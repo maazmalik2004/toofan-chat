@@ -1,12 +1,12 @@
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
-from database_manager import DatabaseManager
-from image_description_generator import ImageDescriptionGenerator
 from langchain_core.documents import Document
+from database_manager import DatabaseManager
+from agents import ImageToDescriptionAgent
 
 class Loader:
     def __init__(self):
         self.database_manager = DatabaseManager()
-        self.image_description_generator = ImageDescriptionGenerator()
+        self.image_description_generator = ImageToDescriptionAgent()
 
     def load_pdf(self, path):
         try:
@@ -38,7 +38,10 @@ class Loader:
         except Exception as e:
             print(f"Error processing image: {e}")
             return []
-
+        
+class Splitter:
+    def __init__(self):
+        pass
 
 loader = Loader()
 documents = loader.load_image("database/services/1234/rag_context/image.jpeg")
