@@ -2,7 +2,7 @@
     "user_id": "2345",
     "chat_history": [
         {
-            "chat_id": "001",
+            "chat_id": "update2",
             "from": "bot",
             "timestamp": "2024-12-01T10:00:00Z",
             "type": "text",
@@ -23,5 +23,5 @@
             "content": "Sure, I can help with that. Please provide the details you want to update."
         }
     ],
-    "chat_history_summary": "ar"
+    "chat_history_summary": "update1"
 }

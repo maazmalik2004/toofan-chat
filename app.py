@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, redirect
 from database_manager import DatabaseManager
 from cache_manager import CacheManager
 
@@ -22,36 +22,32 @@ def db_write_json_callback(key,value):
 
 chat_cache = CacheManager(max_length=10,load_callback=db_read_json_callback,store_callback=db_write_json_callback)
 
+@app.route('/')
+def handle_root():
+    # to return API usage information
+    return redirect("https://www.example.com",code=302)
+
 @app.route('/chat')
 def chat():
-    key1 = f'1234-1234'
-    key2 = f'1234-2345'
+    customer_id = "1234"
+    user_id = "2345"
 
-    read_chat_context_1 = chat_cache.get(key1)
-    read_chat_context_2 = chat_cache.get(key2)
+    key = f'{customer_id}-{user_id}'
+
+    chat_cache.get(key)
+
+    print("------------------")
+
+    chat_cache.get(key)
 
     print("------------------")
 
-    chat_cache.get(key1)
-    chat_cache.get(key2)
+    get_data = chat_cache.get(key)
+    get_data["chat_history_summary"] = "update1"
+    get_data["chat_history"][0]["chat_id"] = "update2"
+    chat_cache.update(key, get_data)
 
-    print("------------------")
-    
-    # chat_cache.activate(key1,read_chat_context_1)
-    # chat_cache.activate(key2,read_chat_context_2)
-
-    get_data_1 = chat_cache.get(key1)
-    get_data_1["chat_history_summary"] = "lu"
-    get_data_1["chat_history"][0]["chat_id"] = "bi"
-    get_data_2 = chat_cache.get(key2)
-    get_data_2["chat_history_summary"] = "ar"
-    chat_cache.update(key1, get_data_1)
-    chat_cache.update(key2, get_data_2)
-
-    # chat_cache.deactivate(key1)
-    # chat_cache.deactivate(key2)
-
-    return [get_data_1,get_data_2]
+    return [get_data]
 
 if __name__ == '__main__':
     app.run(debug=True)
