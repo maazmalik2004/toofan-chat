@@ -165,10 +165,14 @@ class Retriever:
 # vector_store = FAISS.load_local("faiss_store", embeddings=GoogleGenerativeAIEmbeddings(model="models/embedding-001"), allow_dangerous_deserialization=True)
 
 
-# embedder = Embedder()
-# vector_store = embedder.get_vector_store("vector_store")
-# retriever = Retriever(vector_store)
-# print(retriever)
-# output = retriever.retrieve("what is a classical way of picturing the manner in which heavy bodies curve space?")
-# print(output)
+embedder = Embedder()
+vector_store = embedder.get_vector_store("vector_store")
+retriever = Retriever(vector_store)
+print(retriever)
+output = retriever.retrieve("explain alpha beta pruning with examples")
+print(output)
 
+context = "\n".join([doc.page_content for doc in output])
+
+from agents import QueryAnsweringAgent
+print(QueryAnsweringAgent().answer_query("explain alpha beta pruning with example",context))
