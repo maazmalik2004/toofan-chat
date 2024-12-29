@@ -1,18 +1,17 @@
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
-from langchain_core.documents import Document
 from database_manager import DatabaseManager
 from agents import ImageToDescriptionAgent
+from langchain_core.documents import Document
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from io import StringIO
-import faiss
-from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_community.vectorstores import FAISS
-from dotenv import load_dotenv
 from uuid import uuid4
 import os
 
+# temporary imports for testing
+from dotenv import load_dotenv
 load_dotenv()
 
 class Loader:
@@ -59,9 +58,10 @@ class Splitter:
     def __init__(self):
         pass
 
-    def split(self, content):
+    def split(self, documents):
         # splitter = SemanticChunker(GoogleGenerativeAIEmbeddings(model="models/embedding-001"),breakpoint_threshold_type="percentile")
         # documents = semantic_splitter.create_documents([content])
+        content = self.merge_documents_to_text(documents)
         splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap = 100)
         split_documents = splitter.create_documents([content])
 
@@ -84,10 +84,7 @@ class Embedder:
         if not os.path.exists(vector_store_path):
             vector_store = FAISS.from_documents(documents, embedding=self.embedder)
             vector_store.save_local(vector_store_path)
-        else:
-            vector_store = FAISS.load_local(
-                vector_store_path, embeddings=self.embedder, allow_dangerous_deserialization=True
-            )
+        
         vector_store = FAISS.load_local(
             vector_store_path, embeddings = self.embedder, allow_dangerous_deserialization=True
         )
@@ -118,61 +115,38 @@ class Retriever:
 
 
 # loader = Loader()
-# documents = loader.load_pdf("database/services/1234/rag_context/pdf document 2.pdf")
-
 # splitter = Splitter()
-# content = splitter.merge_documents_to_text(documents)
-# chunks = splitter.split(content)
+# embedder = Embedder()
+
+# --------------------------------------------------
+# documents = loader.load_pdf("database/services/1234/rag_context/pdf document.pdf")
+# chunks = splitter.split(documents)
+
 # print(chunks)
 # print(len(chunks))
 
-# embedder = Embedder()
-# vector_store = embedder.embed("vector_store",chunks)
+# vector_store = embedder.embed("database/services/1234/rag_context/vector_store",chunks)
 # print(vector_store)
 
-# loader = Loader()
+# # second document
 # documents = loader.load_pdf("database/services/1234/rag_context/pdf document 2.pdf")
+# chunks = splitter.split(documents)
 
-# splitter = Splitter()
-# content = splitter.merge_documents_to_text(documents)
-# chunks = splitter.split(content)
+# print(chunks)
+# print(len(chunks))
 
-# embedder = Embedder()
-# updated_vector_store = embedder.embed_existing(vector_store, chunks)
+# updated_vector_store = embedder.embed("database/services/1234/rag_context/vector_store", chunks)
+# ---------------------------------
+# query = "how long did mr potato live"
 
-# vector_store.save_local("faiss_store")
-# vector_store = FAISS.load_local("faiss_store", embeddings=GoogleGenerativeAIEmbeddings(model="models/embedding-001"),allow_dangerous_deserialization=True)
-
+# vector_store = embedder.get_vector_store("database/services/1234/rag_context/vector_store")
 # retriever = Retriever(vector_store)
-# print(retriever)
-# output = retriever.retrieve("what happens when the astronaut crosses the horizon")
-# print(output)
+# output = retriever.retrieve(query)
 
-# loader = Loader()
-# documents = loader.load_pdf("database/services/1234/rag_context/pdf document 2.pdf")
+# context = splitter.merge_documents_to_text(output)
 
-# splitter = Splitter()
-# content = splitter.merge_documents_to_text(documents)
-# chunks = splitter.split(content)
-
-# embedder = Embedder()
-# updated_vector_store = embedder.embed_existing(vector_store, chunks)
-
-# # Save the updated vector store
-# updated_vector_store.save_local("faiss_store")
-
-# # Load the updated vector store
-# vector_store = FAISS.load_local("faiss_store", embeddings=GoogleGenerativeAIEmbeddings(model="models/embedding-001"), allow_dangerous_deserialization=True)
-
-
-embedder = Embedder()
-vector_store = embedder.get_vector_store("vector_store")
-retriever = Retriever(vector_store)
-print(retriever)
-output = retriever.retrieve("explain alpha beta pruning with examples")
-print(output)
-
-context = "\n".join([doc.page_content for doc in output])
-
-from agents import QueryAnsweringAgent
-print(QueryAnsweringAgent().answer_query("explain alpha beta pruning with example",context))
+# from agents import QueryAnsweringAgent
+# print("QUERY-------------------------------------------")
+# print(query)
+# print("RESPONSE-------------------------------------------")
+# print(QueryAnsweringAgent().answer_query(query,context))

@@ -1,10 +1,14 @@
-from langchain_google_genai import ChatGoogleGenerativeAI  # for interfacing with Gemini LLM
-from langchain_core.prompts import PromptTemplate  # for creating a prompt template
-from langchain_core.output_parsers import StrOutputParser  # for parsing the model's output
-from database_manager import DatabaseManager
+from langchain_google_genai import ChatGoogleGenerativeAI
 from mistralai import Mistral
-from dotenv import load_dotenv
+
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+
 import os
+
+# temporary imports for testing
+from database_manager import DatabaseManager
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -13,8 +17,9 @@ class ImageToDescriptionAgent:
         self.mistral_client = Mistral(api_key = os.environ["MISTRAL_API_KEY"])
         self.model = model
 
-    def generate_description(self, base_64_image):
-        print("GENERATING DESCRIPTION...")
+    def describe(self, base_64_image):
+        print("GENERATING DESCRIPTION FOR IMAGE...")
+        
         messages = [
             {
                 "role": "user",
@@ -46,9 +51,10 @@ class QueryPreprocessingAgent:
     def break_query(self, query):
         prompt = PromptTemplate.from_template("""
             Break the following query into component sub-queries while preserving the meaning of the queries.
-            Output each sub-query on a new line
+            Output each sub-query on a new line.
+            Strictly follow the following format and output text in the following format \"sub_query1 \\n sub_query2 \\n sub_query3 ...\"                            
             Query: {query}
-            Sub-Queries                                  
+            Sub-Queries:                            
         """)
         chain = prompt | self.gemini_client | StrOutputParser()
         response = chain.invoke(query)
@@ -83,7 +89,7 @@ class SummarizingAgent:
 
         return response
     
-class QueryAnsweringAgent():
+class QueryAnsweringAgent:
     def __init__(self, model = "gemini-1.5-flash"):
         self.gemini_client = ChatGoogleGenerativeAI(model=model)
         self.model = model
@@ -107,7 +113,7 @@ class QueryAnsweringAgent():
                                 })
         return response
 
-class ImageDescriptionRelavancyCheckAgent():
+class ImageDescriptionRelavancyCheckAgent:
     def __init__(self, model = "gemini-1.5-flash"):
         self.gemini_client = ChatGoogleGenerativeAI(model=model)
         self.model = model
@@ -144,7 +150,7 @@ class ImageDescriptionRelavancyCheckAgent():
 # base_64_image = DatabaseManager().read_image("database/services/1234/rag_context/image.jpeg")
 
 # # Step 1: Generate Description from Image
-# image_description = image_description_agent.generate_description(base_64_image)
+# image_description = image_description_agent.describe(base_64_image)
 # print("Image Description:", image_description)
 
 # # Step 2: Break Query into Sub-Queries
