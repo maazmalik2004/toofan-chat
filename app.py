@@ -47,9 +47,35 @@ def handle_root():
     # to return API usage information
     return redirect("https://www.example.com",code=302)
 
+@app.route('/upload', methods = ['POST'])
+def upload():
+    print("UPLOAD REQUEST RECEIVED")
+    file = request.files.get("file")
+    customer_id = request.form.get("customer_id")
+    moderator_id = request.form.get("moderator_id")
+
+    print(file)
+    print(customer_id)
+    print(moderator_id)
+
+    if file and file.filename.lower().endswith(".pdf"):
+        # handle file addition to vector store
+        path = f'database/services/{customer_id}/rag_context/{file.filename}'
+        file.save(path)
+
+        print(path)
+        
+        pages = Loader().load_pdf(path)
+        chunks = Splitter().split(pages)
+        print(chunks)
+        vector_store = Embedder().embed(f'database/services/{customer_id}/rag_context/vector_store',chunks)
+        print(vector_store.index.ntotal)
+
+    return "hello"
+
 @app.route('/chat', methods=['POST'])
 def chat():
-    print("REQUEST RECEIVED")
+    print("CHAT REQUEST RECEIVED")
     body = request.get_json()
     customer_id = body.get("customer_id")
 
