@@ -2,7 +2,7 @@
     "user_id": "1234",
     "chat_history": [
         {
-            "chat_id": "bi",
+            "chat_id": "update2",
             "from": "bot",
             "timestamp": "2024-12-01T10:00:00Z",
             "type": "text",
@@ -17,11 +17,39 @@
         },
         {
             "chat_id": "003",
-            "from": "agent",
+            "from": "bot",
             "timestamp": "2024-12-02T11:30:00Z",
             "type": "text",
             "content": "Sure, I can help with that. Please provide the details you want to update."
+        },
+        {
+            "chat_id": "2a886f05-3610-4072-ac78-0f66dedfe70f",
+            "from": "user",
+            "timestamp": "2024-12-29 13:34:34.714346",
+            "type": "text",
+            "content": "effect of light path by gravitational forces"
+        },
+        {
+            "chat_id": "77be989d-847e-40ba-b4eb-7e41d7d3522b",
+            "from": "bot",
+            "timestamp": "2024-12-29 13:34:34.714517",
+            "type": "text",
+            "content": "Gravity affects anything that carries energy, including light.  Specifically, gravity curves the paths of light.\n\nGravity bends light's path due to the equivalence principle.  This principle equates the effects of a gravitational field with those of an accelerated frame of reference.  Consequently, light's path curves in the presence of gravitational forces.\n\nI am unable to answer your question. While the provided text mentions that light paths are bent by gravitational forces, it does not specify the factors influencing this bending, such as the mass of the object or the distance from it.\n\n"
+        },
+        {
+            "chat_id": "8b4d907b-df39-4efc-b5da-83ece6dec38e",
+            "from": "user",
+            "timestamp": "2024-12-29 13:36:55.541239",
+            "type": "text",
+            "content": "effect of light path by gravitational forces"
+        },
+        {
+            "chat_id": "39f36bc6-9da9-4a23-baf7-7af950d57324",
+            "from": "bot",
+            "timestamp": "2024-12-29 13:36:55.541419",
+            "type": "text",
+            "content": "Gravity affects anything that carries energy, including light.  Specifically, gravity curves the paths of light.\n\n\nIn a gravitational field, the path of light is curved.\n\n"
         }
     ],
-    "chat_history_summary": "lu"
+    "chat_history_summary": "update1"
 }
