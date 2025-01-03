@@ -9,6 +9,7 @@ from io import StringIO
 from langchain_community.vectorstores import FAISS
 from uuid import uuid4
 import os
+import fitz
 
 # temporary imports for testing
 from dotenv import load_dotenv
@@ -18,18 +19,6 @@ class Loader:
     def __init__(self):
         self.database_manager = DatabaseManager()
         self.image_description_generator = ImageToDescriptionAgent()
-
-    def load_pdf(self, path):
-        try:
-            loader = PyPDFLoader(path)
-            documents = []
-            for doc in loader.lazy_load():
-                documents.append(doc)
-            return documents
-        
-        except Exception as e:
-            print(f"ERROR LOADING PDF: {e}")
-            raise
 
     def load_text(self, path):
         try:
@@ -43,7 +32,7 @@ class Loader:
     def load_image(self, path):
         try:
             base_64_image = self.database_manager.read_image(path)
-            description = self.image_description_generator.generate_description(base_64_image)
+            description = self.image_description_generator.describe(base_64_image)
             document = [Document(
                 page_content=description,
                 metadata={"source": path}
@@ -52,15 +41,68 @@ class Loader:
         except Exception as e:
             print(f"ERROR LOADING AND PROCESSING IMAGE: {e}")
             raise
+
+    def load_pdf(self, path):
+        try:
+            loader = PyPDFLoader(path)
+            documents = []
+            for doc in loader.lazy_load():
+                documents.append(doc)
+            return documents
+        
+        except Exception as e:
+            print(f"ERROR LOADING PDF: {e}")
+            raise
+
+    def load_images_from_pdf(self, path):
+        # take in pdf,
+        # extract images and save
+        # for each image, load_image(path to image)
+        # return array of documents... we wont split these documents but simply embed it directly.
+
+        try:
+            pdf = fitz.open(path)
+            documents = []
+            
+            for page in pdf:
+                images = page.get_images(full = True)
+                for i in images:
+                    xref = i[0]
+                    base_image = pdf.extract_image(xref)
+                    image_bytes = base_image["image"]
+                    image_ext = base_image["ext"]
+                    image_path = f"{os.path.dirname(path)}/extracted/{str(uuid4())}.{image_ext}"
+
+                    with open(image_path,"wb") as image_file:
+                        image_file.write(image_bytes)
+
+                    documents = documents + self.load_image(image_path)
+
+            pdf.close()
+            print(documents)
+            return documents
+        except Exception as e:
+            print(f"ERROR LOADING IMAGES FROM PDF: {e}")
+            raise
         
 class Splitter:
     def __init__(self):
         pass
 
+    # def split(self, documents):
+    #     content = self.merge_documents_to_text(documents)
+    #     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap = 100)
+    #     split_documents = splitter.create_documents([content])
+    #     return split_documents
+
     def split(self, documents):
         content = self.merge_documents_to_text(documents)
-        splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap = 100)
-        split_documents = splitter.create_documents([content])
+        splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+        split_texts = splitter.split_text(content)
+        split_documents = []
+        for text in split_texts:
+            metadata = documents[0].metadata if documents else {}
+            split_documents.append(Document(page_content=text, metadata=metadata))
         return split_documents
     
     def merge_documents_to_text(self, documents):
@@ -108,6 +150,8 @@ class Retriever:
         retriever = self.vector_store.as_retriever(search_kwargs={"k": self.number_of_results})
         return retriever.invoke(query)
 
+# loader = Loader()
+# loader.load_images_from_pdf("database/services/1234/knowledge_base/FAI-03 entire.pdf")
 
 # loader = Loader()
 # splitter = Splitter()
