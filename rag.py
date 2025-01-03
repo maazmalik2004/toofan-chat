@@ -71,7 +71,7 @@ class Loader:
                     base_image = pdf.extract_image(xref)
                     image_bytes = base_image["image"]
                     image_ext = base_image["ext"]
-                    image_path = f"{os.path.dirname(path)}/extracted/{str(uuid4())}.{image_ext}"
+                    image_path = f"{os.path.dirname(path)}/{str(uuid4())}.{image_ext}"
 
                     with open(image_path,"wb") as image_file:
                         image_file.write(image_bytes)

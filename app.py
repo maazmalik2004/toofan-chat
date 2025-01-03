@@ -3,7 +3,7 @@ from database_manager import DatabaseManager
 from cache_manager import CacheManager
 
 from rag import Loader, Splitter, Embedder, Retriever
-from agents import ImageToDescriptionAgent, QueryPreprocessingAgent, SummarizingAgent, QueryAnsweringAgent, ImageDescriptionRelavancyCheckAgent 
+from agents import QueryPreprocessingAgent, SummarizingAgent, QueryAnsweringAgent, ImageDescriptionRelavancyCheckAgent 
 
 import os
 from uuid import uuid4
@@ -36,8 +36,7 @@ def chat_context_write_callback(key,value):
     db.write_json(f'database/services/{customer_id}/{user_id}.json',value)
 
 config = db.read_json("database/environment/config.json")
-chat_cache_size = config["chat_cache_size"]
-chat_cache = CacheManager(max_length=chat_cache_size,load_callback=chat_context_read_callback,store_callback=chat_context_write_callback)
+chat_cache = CacheManager(max_length=config["chat_cache_size"],load_callback=chat_context_read_callback,store_callback=chat_context_write_callback)
 
 @app.route('/')
 def handle_root():
@@ -61,9 +60,7 @@ def handle_connect():
     key = f'{customer_id}-{user_id}'
     
     config = db.read_json(f'database/services/{customer_id}/config.json')
-    custom_welcome_message = config["custom_welcome_message"]
-
-    welcome_chat_context = append_chat_record_to_chat_history(key, "bot", "text", custom_welcome_message)
+    welcome_chat_context = append_chat_record_to_chat_history(key, "bot", "text", config["custom_welcome_message"])
 
     return jsonify({
             "success":"true",
@@ -85,6 +82,7 @@ def handle_query():
     
     user_id = body.get("user_id")
     query = body.get("query")
+    key = f'{customer_id}-{user_id}'
 
     print("GETTING VECTOR STORE...")
     vector_store = Embedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
@@ -100,34 +98,34 @@ def handle_query():
 
     print("RETRIEVING RELATED DOCUMENTS")
     retrieved_documents = []
+    response_array = []
+
     for q in queries:
         retrieved_documents += retriever.retrieve(q)
+        top_image_description_document = image_retriever.retrieve(q)[0]
+        relavancy_check_response = ImageDescriptionRelavancyCheckAgent().answer_query(query, top_image_description_document, top_image_description_document)
+        if "yes" in relavancy_check_response.lower():
+            response_array.append(append_chat_record_to_chat_history(key, "bot", "image", db.read_image(top_image_description_document.metadata.get("source"))))
+            image_relavant_response = QueryAnsweringAgent().answer_query(query, top_image_description_document)
+            response_array.append(append_chat_record_to_chat_history(key, "bot", "text", image_relavant_response))
+
 
     print("MERGING RETRIEVED DOCUMENTS CONTENT...")
     context = Splitter().merge_documents_to_text(retrieved_documents)
 
-    key = f'{customer_id}-{user_id}'
-    context = f"previous chat summary : {chat_cache.get(key)["chat_history_summary"]}\n{context}"
+    context = f"PREVIOUS CHAT SUMMARY : {chat_cache.get(key)["chat_history_summary"]}\n{context}"
     
     print(f'EVALUATING {query}')
     response = QueryAnsweringAgent().answer_query(query, context)
 
-    # change query to context to get images relavant to context
-    image_description_documents = image_retriever.retrieve(query)
-    merged_descriptions = Splitter().merge_documents_to_text(image_description_documents)
+    # change query to context to get images relavant to context. but also want to retrieve images not bound to any context as well
+    # merged_descriptions = Splitter().merge_documents_to_text(image_description_documents)
     # change merged_descriptions to context to get context relavant images, or maybe we can keep it directly relavant to the query
-    relavancy_check_response = ImageDescriptionRelavancyCheckAgent().answer_query(query, merged_descriptions, merged_descriptions)
-    
-    response_array = []
-    
+    # relavancy_check_response = ImageDescriptionRelavancyCheckAgent().answer_query(query, merged_descriptions, merged_descriptions)
+
     append_chat_record_to_chat_history(key, "user", "text", query)
     response_array.append(append_chat_record_to_chat_history(key, "bot", "text", response))
     
-    if "yes" in relavancy_check_response.lower():
-        response_array.append(append_chat_record_to_chat_history(key, "bot", "image", db.read_image(image_description_documents[0].metadata.get("source"))))
-        image_relavant_response = QueryAnsweringAgent().answer_query(query, merged_descriptions)
-        response_array.append(append_chat_record_to_chat_history(key, "bot", "text", image_relavant_response))
-
     return jsonify({
             "success":"true",
             "message":"query evaluated successfully",
@@ -141,7 +139,6 @@ def handle_upload():
     moderator_id = request.form.get("moderator_id")
 
     if file:   
-        print("file exists")
         if file.filename.lower().endswith(".pdf"):
             path = f'database/services/{customer_id}/knowledge_base/{str(uuid4())}{file.filename}'
             file.save(path)
@@ -150,7 +147,6 @@ def handle_upload():
             chunks = Splitter().split(pages)
             vector_store = Embedder().embed(f'database/services/{customer_id}/knowledge_base/vector_store',chunks)
             image_vector_store = Embedder().embed(f'database/services/{customer_id}/knowledge_base/image_vector_store',image_descriptions)
-            print(f"meow {image_descriptions}")
 
         if file.filename.lower().endswith(".txt"):
             path = f'database/services/{customer_id}/knowledge_base/{str(uuid4())}{file.filename}'
@@ -161,7 +157,6 @@ def handle_upload():
             print(vector_store.index.ntotal)
 
         if file.filename.lower().endswith((".png", ".jpg", ".jpeg")):
-            print("file is an image")
             path = f'database/services/{customer_id}/knowledge_base/{str(uuid4())}{file.filename}'
             file.save(path)
             image_descriptions = Loader().load_image(path)
@@ -179,10 +174,6 @@ def handle_upload():
         })
 
 def append_chat_record_to_chat_history(key, by, type, content):
-    # required tasks to be performed  1)insert the new chat at the beginning of the chat history
-                                    # 2)cyclically remove old chats given a predefined limit
-                                    # 3)update chat_history_summary with a new summary
-
     chat_record = {
         "chat_id":str(uuid4()),
         "from": by,
@@ -190,13 +181,13 @@ def append_chat_record_to_chat_history(key, by, type, content):
         "type": type,
         "content": content
     }
+
     chat_context = chat_cache.get(key)
 
     split_key = key.split("-")
     customer_id = split_key[0]
 
-    config_path = f'database/services/{customer_id}/config.json'
-    config = db.read_json(config_path)
+    config = db.read_json("database/environment/config.json")
 
     if(chat_context["chat_history_size"]+1 > config["chat_history_window_limit"]):
         chat_context["chat_history"].pop(0)
