@@ -25,7 +25,8 @@ def db_read_json_callback(key):
         default_chat_context = {
             "user_id":user_id,
             "chat_history":[],
-            "chat_history_summary":""
+            "chat_history_summary":"",
+            "chat_history_size":0
         }
         
         db.write_json(path, default_chat_context)
@@ -73,90 +74,118 @@ def upload():
 
     return "hello"
 
-@app.route('/chat', methods=['POST'])
-def chat():
-    print("CHAT REQUEST RECEIVED")
+@app.route('/chat/connect', methods=['POST'])
+def connect():
+    print("CONNECT REQUESTED")
     body = request.get_json()
     customer_id = body.get("customer_id")
 
     if not os.path.isdir(f'database/services/{customer_id}'):
-        return "invalid customer_id"
+        return jsonify({
+            "success":"false",
+            "message":f'{customer_id} customer does not exist (invalid customer id)'
+        })
+
+    user_id = body.get("user_id")
+    key = f'{customer_id}-{user_id}'
+    
+    config_path = f'database/services/{customer_id}/config.json'
+    config = db.read_json(config_path)
+    custom_welcome_message = config["custom_welcome_message"]
+
+    append_chat_record_to_chat_history(key, "bot", "text", custom_welcome_message)
+
+    return jsonify({
+            "success":"true",
+            "type":"text",
+            "message":custom_welcome_message
+        })
+
+
+@app.route('/chat/query', methods=['POST'])
+def handle_query():
+    print("QUERY RECEIVED. PROCESSING QUERY...")
+    body = request.get_json()
+    customer_id = body.get("customer_id")
+
+    if not os.path.isdir(f'database/services/{customer_id}'):
+        return jsonify({
+            "success":"false",
+            "message":f'{customer_id} customer does not exist (invalid customer id)'
+        })
     
     user_id = body.get("user_id")
     query = body.get("query")
-    key = f'{customer_id}-{user_id}'
 
     vector_store_path = f'database/services/{customer_id}/rag_context/vector_store'
     print("LOADING VECTOR STORE...")
     vector_store = Embedder().get_vector_store(vector_store_path)
 
-    print(vector_store.index.ntotal)
-
+    print("INITIALIZING RETRIEVER...")
     retriever = Retriever(vector_store)
 
     print("BREAKING QUERY...")
     queries = QueryPreprocessingAgent().break_query(query)
     print(queries)
-    responses = []
+
+    print("RETRIEVING RELATED DOCUMENTS")
     
-    def evaluate_single_query(query):
-        print("RETRIEVING RELATED DOCUMENTS")
-        retrieved_documents = retriever.retrieve(query)
-        context = Splitter().merge_documents_to_text(retrieved_documents)
-        print(f'EVALUATING {query}')
-        response = QueryAnsweringAgent().answer_query(query, context)
-        print(response)
-        return response
-    
+    retrieved_documents = []
     for q in queries:
-        responses.append(evaluate_single_query(q))
+        print(f"aalu {q}")
+        retrieved_documents += retriever.retrieve(q)
 
-    aggregate_response = ""
-    for response in responses:
-        aggregate_response += response+"\n"
+    context = Splitter().merge_documents_to_text(retrieved_documents)
 
+    key = f'{customer_id}-{user_id}'
+    context = chat_cache.get(key)["chat_history_summary"] + "\n" + context
+    
+    print(f'EVALUATING {query}')
+    response = QueryAnsweringAgent().answer_query(query, context)
+    print(response)
+    
     # UPDATING CHAT CONTEXT
+    append_chat_record_to_chat_history(key, "user", "text", query)
+    append_chat_record_to_chat_history(key, "bot", "text", response)
+
+    return jsonify({
+            "success":"true",
+            "type":"text",
+            "message":response
+        })
+
+def append_chat_record_to_chat_history(key, by, type, content):
+    # required tasks to be performed  1)insert the new chat at the beginning of the chat history
+                                    # 2)cyclically remove old chats given a predefined limit
+                                    # 3)update chat_history_summary with a new summary
+
+    chat_record = {
+        "chat_id":str(uuid4()),
+        "from": by,
+        "timestamp":str(datetime.now()),
+        "type": type,
+        "content": content
+    }
     chat_context = chat_cache.get(key)
 
-    user_chat_record = {
-            "chat_id":str(uuid4()),
-            "from": "user",
-            "timestamp":str(datetime.now()),
-            "type": "text",
-            "content": query
-        }
-    
-    bot_chat_record = {
-            "chat_id":str(uuid4()),
-            "from": "bot",
-            "timestamp":str(datetime.now()),
-            "type": "text",
-            "content": aggregate_response
-        }
-    
-    print("USER CHAT RECORD-------------------")
-    print(user_chat_record)
-    print("BOT CHAT RECORD-------------------")
-    print(bot_chat_record)
-    
-    chat_context["chat_history"].append(user_chat_record)
-    chat_context["chat_history"].append(bot_chat_record)
-    print("UPDATED CHAT CONTEXT-------------------")
-    print(chat_context)
+    split_key = key.split("-")
+    customer_id = split_key[0]
+
+    config_path = f'database/services/{customer_id}/config.json'
+    config = db.read_json(config_path)
+
+    if(chat_context["chat_history_size"]+1 > config["chat_history_window_limit"]):
+        chat_context["chat_history"].pop(0)
+        chat_context["chat_history_size"] = chat_context["chat_history_size"] - 1
+
+    chat_context["chat_history"].append(chat_record)
+    chat_context["chat_history_size"] = chat_context["chat_history_size"] + 1
+    chat_context["chat_history_summary"] = SummarizingAgent().summarize_query(f"{chat_context["chat_history_summary"]}\n{content}")
+
     chat_cache.update(key, chat_context)
-
-    # print("SUMMARIZING AGGREGATE RESPONSE...")
-    # summarized_response = SummarizingAgent().summarize_query(aggregate_response)
-    # print(summarized_response)
-
-    return jsonify(aggregate_response)
-    # first split the query into sub questions
-    # evaluate each sub question independently
-
-#     get_data = chat_cache.get(key)
-#     get_data["chat_history_summary"] = "update1"
-#     get_data["chat_history"][0]["chat_id"] = "update2"
-#     chat_cache.update(key, get_data)
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+# to do-
+# to wite only those chat contexts to the db which have been modified... maintain a modified flag

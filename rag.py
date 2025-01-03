@@ -25,12 +25,11 @@ class Loader:
             documents = []
             for doc in loader.lazy_load():
                 documents.append(doc)
-
             return documents
         
         except Exception as e:
-            print(f"Error loading PDF: {e}")
-            return []
+            print(f"ERROR LOADING PDF: {e}")
+            raise
 
     def load_text(self, path):
         try:
@@ -38,8 +37,8 @@ class Loader:
             document = loader.load()
             return document
         except Exception as e:
-            print(f"Error loading text file: {e}")
-            return []
+            print(f"ERROR LOADING TEXT FILE: {e}")
+            raise
 
     def load_image(self, path):
         try:
@@ -51,24 +50,20 @@ class Loader:
             )]
             return document
         except Exception as e:
-            print(f"Error processing image: {e}")
-            return []
+            print(f"ERROR LOADING AND PROCESSING IMAGE: {e}")
+            raise
         
 class Splitter:
     def __init__(self):
         pass
 
     def split(self, documents):
-        # splitter = SemanticChunker(GoogleGenerativeAIEmbeddings(model="models/embedding-001"),breakpoint_threshold_type="percentile")
-        # documents = semantic_splitter.create_documents([content])
         content = self.merge_documents_to_text(documents)
         splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap = 100)
         split_documents = splitter.create_documents([content])
-
         return split_documents
     
     def merge_documents_to_text(self, documents):
-        print("combining document content for splitting")
         combined_text = StringIO()
         for document in documents:
             combined_text.write(document.page_content + "\n")

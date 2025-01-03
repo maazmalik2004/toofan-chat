@@ -17,5 +17,6 @@
     "allowed": true,
     "allow_web_access": true,
     "personality_prompt": "Please ensure the responses are polite and concise.",
-    "custom_welcome_message": "Welcome to Example Service, how can I assist you today?"
+    "custom_welcome_message": "Welcome to Example Service, how can I assist you today?",
+    "chat_history_window_limit":5
 }

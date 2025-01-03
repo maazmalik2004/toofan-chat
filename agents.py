@@ -50,8 +50,9 @@ class QueryPreprocessingAgent:
 
     def break_query(self, query):
         prompt = PromptTemplate.from_template("""
-            Break the following query into component sub-queries while preserving the meaning of the queries.
+            Break the following query into component sub-queries.
             Output each sub-query on a new line.
+            Strictly avoid redundant sub-queries and keep the form of the sub query same as the original query wherever possible
             Strictly follow the following format and output text in the following format \"sub_query1 \\n sub_query2 \\n sub_query3 ...\"                            
             Query: {query}
             Sub-Queries:                            
