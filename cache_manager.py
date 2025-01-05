@@ -41,7 +41,7 @@ class CacheManager:
             print(f'{key} ALREADY DEACTIVE')
 
     def get(self, key):
-        print(self.cache)
+        # print(self.cache)
         if key in self.cache:
             value = self.cache.pop(key)
             self.cache[key] = value

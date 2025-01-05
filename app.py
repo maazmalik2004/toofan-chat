@@ -132,6 +132,61 @@ def handle_query():
             "response":response_array
         })
 
+@app.route("/chat/history", methods = ["POST"])
+def handle_history():
+    # we receive request and we send a page of chat history let say 3...
+    # request format
+    # [0 1 2 3 4 5 6 7 8 9(most recent)] for 0th page... (len - 1) to (len-page_size*page_number-page_size)...for 1'st page (len-page_size*page_number-1) to (len-len-page_size*page_number-page_size) if start is less than 0, start should be 0 and end should be 
+    # if end is greater than len-1, end should be len-1... case will never be achieved
+    """
+    {
+        customer_id
+        user_id
+        page_number
+        page_size
+    }
+    """
+    body = request.get_json()
+    customer_id = body.get("customer_id")
+
+    if not os.path.isdir(f'database/services/{customer_id}'):
+        return jsonify({
+            "success":"false",
+            "message":f'{customer_id} customer does not exist (invalid customer id)'
+        })
+    
+    user_id = body.get("user_id")
+    query = body.get("query")
+    page_number = body.get("page_number")
+    page_size = body.get("page_size")
+    key = f'{customer_id}-{user_id}'
+
+    chat_context = chat_cache.get(key)
+    chat_history = chat_context["chat_history"]
+    chat_history_size = chat_context["chat_history_size"]
+
+    end = chat_history_size - page_number*page_size - 1
+    start = chat_history_size - page_number*page_size - page_size
+
+    print(start)
+    print(end)
+
+    if start<0:
+        start = 0
+    
+    if end < 0:
+        end = -1
+            
+    print(start)
+    print(end)
+    print(len(chat_history[start:end+1]))
+    
+    return jsonify({
+        "success":"true",
+        "message":"page fetched successfully (0th page refers to the most recent chats)",
+        "chat_history_page":chat_history[start:end+1]
+    })
+
 @app.route('/upload', methods = ['POST'])
 def handle_upload():
     file = request.files.get("file")
