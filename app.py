@@ -187,7 +187,7 @@ def handle_history():
         "chat_history_page":chat_history[start:end+1]
     })
 
-@app.route('/upload', methods = ['POST'])
+@app.route('/moderator/upload', methods = ['POST'])
 def handle_upload():
     file = request.files.get("file")
     customer_id = request.form.get("customer_id")

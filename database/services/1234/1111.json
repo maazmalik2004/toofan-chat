@@ -42,8 +42,22 @@
             "timestamp": "2025-01-04 11:48:29.321718",
             "type": "text",
             "content": "The provided text describes a vacuum cleaner with features including a two-way floor nozzle for rugs and hard floors, a crevice nozzle for corners and edges, a round nozzle for furniture and ceilings, and adjustable suction power.  It also details the vacuum cleaner's components, operation, cleaning, and storage.\n"
+        },
+        {
+            "chat_id": "021fd604-aa16-4806-ac4b-cf8a44a8d078",
+            "from": "user",
+            "timestamp": "2025-01-06 12:53:57.532199",
+            "type": "text",
+            "content": "vaccum cleaner is experincing lack of suction power"
+        },
+        {
+            "chat_id": "0aa41b13-0e89-4d7d-9d6a-3cb5e453a3d8",
+            "from": "bot",
+            "timestamp": "2025-01-06 12:53:59.067132",
+            "type": "text",
+            "content": "A decrease in suction power indicates a full dust compartment.  Turn off the vacuum, remove the hose, and empty the compartment.  Then, replace the filter and top section.  Also, check if the hose is clogged; if so, remove it, insert the handle into the suction base, and turn on the vacuum to clear the blockage.  Finally, ensure the suction control knob is set to the desired level.\n"
         }
     ],
-    "chat_history_summary": "A Base64-encoded SVG image depicts a detailed white vacuum cleaner (with hose) and a broom.  The vacuum cleaner's top and bottom views showcase repeating patterns and geometric shapes.  The accompanying text describes its features (two-way floor nozzle, crevice nozzle, round nozzle, adjustable suction), operation, cleaning, and storage.\n",
-    "chat_history_size": 6
+    "chat_history_summary": "A Base64-encoded SVG image depicts a patterned vacuum cleaner and broom.  The vacuum, despite its detailed features (multiple nozzles, adjustable suction), suffers from low suction.  Troubleshooting steps include emptying the dust compartment, replacing the filter and top section, clearing any hose blockages, and checking the suction control.\n",
+    "chat_history_size": 8
 }
