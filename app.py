@@ -84,13 +84,23 @@ def handle_query():
     query = body.get("query")
     key = f'{customer_id}-{user_id}'
 
+    customer_config = db.read_json(f'database/services/{customer_id}/config.json')
+    allow_multimodal_for_images = customer_config["allow_multimodal_for_images"]
+
+    image_vector_store = None
+    image_retriever = None
+    top_image_description_document = None
+    relavancy_check_response = None
+    
     print("GETTING VECTOR STORE...")
     vector_store = Embedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
-    image_vector_store = Embedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/image_vector_store')
+    if allow_multimodal_for_images:     
+        image_vector_store = Embedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/image_vector_store')
 
     print("INITIALIZING RETRIEVER...")
     retriever = Retriever(vector_store)
-    image_retriever = Retriever(image_vector_store)
+    if allow_multimodal_for_images:  
+        image_retriever = Retriever(image_vector_store)
 
     print("BREAKING QUERY...")
     queries = QueryPreprocessingAgent().break_query(query)
@@ -102,12 +112,13 @@ def handle_query():
 
     for q in queries:
         retrieved_documents += retriever.retrieve(q)
-        top_image_description_document = image_retriever.retrieve(q)[0]
-        relavancy_check_response = ImageDescriptionRelavancyCheckAgent().answer_query(query, top_image_description_document, top_image_description_document)
-        if "yes" in relavancy_check_response.lower():
-            response_array.append(append_chat_record_to_chat_history(key, "bot", "image", db.read_image(top_image_description_document.metadata.get("source"))))
-            image_relavant_response = QueryAnsweringAgent().answer_query(query, top_image_description_document)
-            response_array.append(append_chat_record_to_chat_history(key, "bot", "text", image_relavant_response))
+        if allow_multimodal_for_images:  
+            top_image_description_document = image_retriever.retrieve(q)[0]
+            relavancy_check_response = ImageDescriptionRelavancyCheckAgent().answer_query(query, top_image_description_document, top_image_description_document)
+            if "yes" in relavancy_check_response.lower():
+                response_array.append(append_chat_record_to_chat_history(key, "bot", "image", db.read_image(top_image_description_document.metadata.get("source"))))
+                image_relavant_response = QueryAnsweringAgent().answer_query(query, top_image_description_document)
+                response_array.append(append_chat_record_to_chat_history(key, "bot", "text", image_relavant_response))
 
 
     print("MERGING RETRIEVED DOCUMENTS CONTENT...")
