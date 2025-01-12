@@ -8,7 +8,7 @@ from FileSystemInterface import FileSystemInterface
 from ResourceManager import ResourceManager
 
 from rag import KnowledgeArtifactLoader, LangchainDocumentsSplitter, LangchainDocumentChunksEmbedder, LangchainDocumentChunksRetriever
-from agents import QueryPreprocessingAgent, SummarizingAgent, QueryAnsweringAgent, ImageDescriptionRelavancyCheckAgent 
+from agents import QueryPreprocessingAgent, SummarizingAgent, QueryAnsweringAgent, ImageDescriptionRelavancyCheckAgent, WatchmanAgent
 
 from dotenv import load_dotenv
 load_dotenv()
