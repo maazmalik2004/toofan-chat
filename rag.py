@@ -65,7 +65,7 @@ class KnowledgeArtifactLoader:
         # return array of documents... we wont split these documents but simply embed it directly.
 
         try:
-            pdf = fitz.open(path)
+            pdf = self.resource_manager.get(f'file_system/{path}')
             documents = []
             
             for page in pdf:
