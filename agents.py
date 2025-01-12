@@ -1,16 +1,14 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
 from mistralai import Mistral
 
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
 import os
 
 # temporary imports for testing
-from database_manager import DatabaseManager
-from dotenv import load_dotenv
-
-load_dotenv()
+# from dotenv import load_dotenv
+# load_dotenv()
 
 class ImageToDescriptionAgent:
     def __init__(self, model = "pixtral-12b-2409"):
@@ -137,39 +135,3 @@ class ImageDescriptionRelavancyCheckAgent:
                                  "image_description":image_description
                                 })
         return response
-
-# # Initialize all agents
-# image_description_agent = ImageToDescriptionAgent(model="pixtral-12b-2409")
-# query_preprocessing_agent = QueryPreprocessingAgent(model="gemini-1.5-flash")
-# summarizing_agent = SummarizingAgent(model="gemini-1.5-flash")
-# query_answering_agent = QueryAnsweringAgent(model="gemini-1.5-flash")
-# image_relevancy_agent = ImageDescriptionRelavancyCheckAgent(model="gemini-1.5-flash")
-
-# # Sample Inputs
-# query = "What are the main features of the Eiffel Tower during sunset?"
-# context = "The Eiffel Tower is an iconic landmark in Paris, France, known for its intricate iron structure and beautiful lighting at sunset."
-# base_64_image = DatabaseManager().read_image("database/services/1234/rag_context/image.jpeg")
-
-# # Step 1: Generate Description from Image
-# image_description = image_description_agent.describe(base_64_image)
-# print("Image Description:", image_description)
-
-# # Step 2: Break Query into Sub-Queries
-# sub_queries = query_preprocessing_agent.break_query(query)
-# print("Sub-Queries:", sub_queries)
-
-# # Step 3: Augment the Query
-# augmented_queries = query_preprocessing_agent.augment_query(query)
-# print("Augmented Queries:", augmented_queries)
-
-# # Step 4: Summarize the Query
-# query_summary = summarizing_agent.summarize_query(context)
-# print("Query Summary:", query_summary)
-
-# # Step 5: Answer the Query Using Context
-# query_answer = query_answering_agent.answer_query(query, context)
-# print("Query Answer:", query_answer)
-
-# # Step 6: Check Relevance of the Image Description
-# is_relevant = image_relevancy_agent.answer_query(query, context, image_description)
-# print("Is Image Relevant?", is_relevant)

@@ -1,4 +1,4 @@
 {
-    "chat_cache_size":10,
-    "chat_history_window_limit":10
+    "chat_cache_size": 11,
+    "chat_history_window_limit": 12
 }

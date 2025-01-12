@@ -1,5 +1,0 @@
-1)cofigurable whether multimodal or not images etc
-
-2)docker compose
-
-3)optimization and benchmaring
