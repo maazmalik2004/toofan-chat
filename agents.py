@@ -142,17 +142,7 @@ class WatchmanAgent:
         self.gemini_client = ChatGoogleGenerativeAI(model=model)
         self.model = model
 
-    def guard(self, query):
-        knowledge_summary = """
-            The document is a user manual for a vacuum cleaner. It provides instructions on its proper use, maintenance, and safety. Key sections include:
-            Safety Instructions: Covers safe usage practices such as voltage requirements, avoiding wet surfaces, not using damaged cords, and keeping the vacuum away from children or flammable materials.
-            Technical Specifications: Includes details about voltage, power, and component descriptions like the hose, brushes, and nozzles.
-            Component Functions: Explains how to use the vacuum's features, such as the suction control, blower function, and different cleaning nozzles.
-            Maintenance: Includes instructions for unclogging the hose, emptying the dust compartment, cleaning filters and other components, and proper storage.
-            Usage Instructions: Describes how to assemble and operate the vacuum cleaner for various tasks.
-            Filter System Options: Provides guidance on switching between the water filter system and an SMS cloth bag for collecting dust.
-            It emphasizes reading and adhering to the instructions for safe and effective use.
-        """
+    def guard(self, query, knowledge_summary):
         prompt = PromptTemplate.from_template("""
         You are an expert at determining whether a user query is specific or general in nature, based on the provided knowledge summary.
 
@@ -160,8 +150,9 @@ class WatchmanAgent:
         Even if the query is somewhat related to the knowledge summary, the query is specific.
         Keep in mind that even tho the summary might not contain the answer, the knowledge it is representing might.
         A query is general if it is broad, abstract, or not explicitly tied to the provided knowledge summary. If the query is general, respond with a direct "yes."
-        Query: {query}
-        Knowledge Summary: {knowledge_summary}
+        
+        <Query> {query} </Query>
+        <KnowledgeSummary> {knowledge_summary} </KnowledgeSummary>
         """)
 
         chain = prompt | self.gemini_client | StrOutputParser()

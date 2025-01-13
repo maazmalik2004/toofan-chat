@@ -6,6 +6,7 @@ from datetime import datetime
 
 from FileSystemInterface import FileSystemInterface
 from ResourceManager import ResourceManager
+from ChatHistoryManager import   ChatHistoryManager
 
 from rag import KnowledgeArtifactLoader, LangchainDocumentsSplitter,LangchainDocumentsMerger,  LangchainDocumentChunksEmbedder, LangchainDocumentChunksRetriever
 from agents import QueryPreprocessingAgent, SummarizingAgent, QueryAnsweringAgent, ImageDescriptionRelavancyCheckAgent, WatchmanAgent, GeneralQueryAnsweringAgent
@@ -18,6 +19,7 @@ app = Flask(__name__)
 rm = ResourceManager(location_interface_map = {
              "file_system": FileSystemInterface()
          })
+chat_history_manager = ChatHistoryManager(resource_manager=rm)
 
 # config = rm.get("file_system/database/environment/config.json")
 @app.route('/')
@@ -35,7 +37,7 @@ async def handle_connect():
     key = f'{customer_id}-{user_id}'
     
     config = rm.get(f'file_system/database/services/{customer_id}/config.json')
-    welcome_chat_context = append_chat_record_to_chat_history(customer_id, user_id, "bot", "text", config["custom_welcome_message"])
+    welcome_chat_context = chat_history_manager.append(customer_id, user_id, "bot", "text", config["custom_welcome_message"])
 
     return jsonify({
             "success":"true",
@@ -77,8 +79,10 @@ async def handle_query():
     retrieved_documents = []
     response_array = []
 
+    knowledge_summary = customer_config["knowledge_summary"]
+
     for q in queries:
-        watchman_agent_decision = WatchmanAgent().guard(q)
+        watchman_agent_decision = WatchmanAgent().guard(q, knowledge_summary)
         if "yes" in watchman_agent_decision.lower():
             print(f'{q} is general')
             # aggregate_of_general_queries = aggregate_of_general_queries + "\n" + q
@@ -91,16 +95,16 @@ async def handle_query():
                 print(relavancy_check_decision)
                 if "yes" in relavancy_check_decision.lower():
                     retrieved_documents.append(top_image_document)
-                    response_array.append(append_chat_record_to_chat_history(customer_id, user_id, "bot", "image", rm.get(f'file_system/{top_image_document.metadata.get("source")}')))
+                    response_array.append(chat_history_manager.append(customer_id, user_id, "bot", "image", rm.get(f'file_system/{top_image_document.metadata.get("source")}')))
 
     print(retrieved_documents)
     aggregate_context = LangchainDocumentsMerger().merge_documents_to_string(retrieved_documents)
     # general_response = GeneralQueryAnsweringAgent().answer(aggregate_of_general_queries)
     specific_response = QueryAnsweringAgent().answer(query, aggregate_context)
 
-    append_chat_record_to_chat_history(customer_id, user_id, "user", "text", query)
-    # response_array.append(append_chat_record_to_chat_history(customer_id, user_id, "bot", "text", general_response))
-    response_array.append(append_chat_record_to_chat_history(customer_id, user_id, "bot", "text", specific_response))
+    chat_history_manager.append(customer_id, user_id, "user", "text", query)
+    # response_array.append(chat_history_manager.append(customer_id, user_id, "bot", "text", general_response))
+    response_array.append(chat_history_manager.append(customer_id, user_id, "bot", "text", specific_response))
 
     # print("RETRIEVING RELATED DOCUMENTS")
     # retrieved_documents = []
@@ -112,9 +116,9 @@ async def handle_query():
     #         # top_image_description_document = image_retriever.retrieve(q)[0]
     #         # relavancy_check_response = ImageDescriptionRelavancyCheckAgent().answer_query(query, top_image_description_document, top_image_description_document)
     #         # if "yes" in relavancy_check_response.lower():
-    #         #     response_array.append(append_chat_record_to_chat_history(customer_id, user_id, "bot", "image", rm.get(f'file_system/{top_image_description_document.metadata.get("source")}')))
+    #         #     response_array.append(chat_history_manager.append(customer_id, user_id, "bot", "image", rm.get(f'file_system/{top_image_description_document.metadata.get("source")}')))
     #         #     image_relavant_response = QueryAnsweringAgent().answer_query(query, top_image_description_document)
-    #         #     response_array.append(append_chat_record_to_chat_history(customer_id, user_id, "bot", "text", image_relavant_response))
+    #         #     response_array.append(chat_history_manager.append(customer_id, user_id, "bot", "text", image_relavant_response))
 
 
     # print("MERGING RETRIEVED DOCUMENTS CONTENT...")
@@ -128,8 +132,8 @@ async def handle_query():
     # # change merged_descriptions to context to get context relavant images, or maybe we can keep it directly relavant to the query
     # # relavancy_check_response = ImageDescriptionRelavancyCheckAgent().answer_query(query, merged_descriptions, merged_descriptions)
 
-    # append_chat_record_to_chat_history(customer_id, user_id, "user", "text", query)
-    # response_array.append(append_chat_record_to_chat_history(customer_id, user_id, "bot", "text", response))
+    # chat_history_manager.append(customer_id, user_id, "user", "text", query)
+    # response_array.append(chat_history_manager.append(customer_id, user_id, "bot", "text", response))
     
     return jsonify({
             "success":"true",
@@ -225,30 +229,6 @@ async def handle_upload():
             "success":"false",
             "message":"file upload failed. no file provided or invalid file format (.pdf, .txt, .jpg, .jpeg, .png) allowed"
         })
-
-def append_chat_record_to_chat_history(customer_id, user_id, by, type, content):
-    chat_record = {
-        "chat_id":str(uuid4()),
-        "from": by,
-        "timestamp":str(datetime.now()),
-        "type": type,
-        "content": content
-    }
-
-    chat_context = rm.get(f'file_system/database/services/{customer_id}/{user_id}.json')
-    config = rm.get("file_system/database/environment/config.json")
-
-    if(chat_context["chat_history_size"]+1 > config["chat_history_window_limit"]):
-        chat_context["chat_history"].pop(0)
-        chat_context["chat_history_size"] = chat_context["chat_history_size"] - 1
-
-    chat_context["chat_history"].append(chat_record)
-    chat_context["chat_history_size"] = chat_context["chat_history_size"] + 1
-    # chat_context["chat_history_summary"] = SummarizingAgent().summarize_query(f"{chat_context["chat_history_summary"]}\n{content}")
-
-    rm.set(f'file_system/database/services/{customer_id}/{user_id}.json', chat_context)
-
-    return chat_record
 
 if __name__ == '__main__':
     app.run(debug=True)
