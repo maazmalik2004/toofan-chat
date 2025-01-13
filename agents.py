@@ -52,8 +52,8 @@ class QueryPreprocessingAgent:
             Output each sub-query on a new line.
             Strictly avoid redundant sub-queries and keep the form of the sub query same as the original query wherever possible
             Strictly follow the following format and output text in the following format \"sub_query1 \\n sub_query2 \\n sub_query3 ...\"                            
+            
             Query: {query}
-            Sub-Queries:                            
         """)
         chain = prompt | self.gemini_client | StrOutputParser()
         response = chain.invoke(query)
@@ -93,13 +93,14 @@ class QueryAnsweringAgent:
         self.gemini_client = ChatGoogleGenerativeAI(model=model)
         self.model = model
 
-    def answer_query(self, query, context):
+    def answer(self, query, context):
         prompt = PromptTemplate.from_template("""
             Answer the query based on the provided context.
             Do not use terms like "based on the following text" or "in the text" or "provided text"
             Respond confidently and directly with authoritative knowledge, using concise, professional language and taking ownership of the response.
             I will tip you $1000 if the user finds the answer helpful.
             If you are not confident about the answer or the context does not contain the answer, be humble enough to accept you dont know.
+            Completely ignore the query, the answer for which does not exist in the context. positively answer those queries whose answer maybe exists                                  
                             
             <Query>{query}</Query>
             <Context>{context}</Context>
@@ -170,4 +171,22 @@ class WatchmanAgent:
             "knowledge_summary":knowledge_summary
             })
 
+        return response
+    
+class GeneralQueryAnsweringAgent:
+    def __init__(self, model = "gemini-1.5-flash"):
+        self.gemini_client = ChatGoogleGenerativeAI(model=model)
+        self.model = model
+
+    def answer(self, query):
+        prompt = PromptTemplate.from_template("""
+            be humble and considerate.
+            if the query requires prior knowledge, humbly accept you have no knowledge on that topic    
+            dont respond with information not explicitly given to you                                                                                                           
+            <Query>{query}</Query>
+        """)
+
+        chain = prompt | self.gemini_client | StrOutputParser()
+
+        response = chain.invoke(query)
         return response

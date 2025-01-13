@@ -7,8 +7,8 @@ from datetime import datetime
 from FileSystemInterface import FileSystemInterface
 from ResourceManager import ResourceManager
 
-from rag import KnowledgeArtifactLoader, LangchainDocumentsSplitter, LangchainDocumentChunksEmbedder, LangchainDocumentChunksRetriever
-from agents import QueryPreprocessingAgent, SummarizingAgent, QueryAnsweringAgent, ImageDescriptionRelavancyCheckAgent, WatchmanAgent
+from rag import KnowledgeArtifactLoader, LangchainDocumentsSplitter,LangchainDocumentsMerger,  LangchainDocumentChunksEmbedder, LangchainDocumentChunksRetriever
+from agents import QueryPreprocessingAgent, SummarizingAgent, QueryAnsweringAgent, ImageDescriptionRelavancyCheckAgent, WatchmanAgent, GeneralQueryAnsweringAgent
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -50,15 +50,14 @@ async def handle_query():
     customer_id = body.get("customer_id")
     user_id = body.get("user_id")
     query = body.get("query")
-    key = f'{customer_id}-{user_id}'
 
     customer_config = rm.get(f'file_system/database/services/{customer_id}/config.json')
     allow_multimodal_for_images = customer_config["allow_multimodal_for_images"]
 
     image_vector_store = None
     image_retriever = None
-    top_image_description_document = None
-    relavancy_check_response = None
+    top_image_document = None
+    relavancy_check_decision = None
     
     print("GETTING VECTOR STORE...")
     vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
@@ -74,38 +73,63 @@ async def handle_query():
     queries = QueryPreprocessingAgent().break_query(query)
     print(queries)
 
-    print("RETRIEVING RELATED DOCUMENTS")
+    # aggregate_of_general_queries = ""
     retrieved_documents = []
     response_array = []
 
     for q in queries:
-        retrieved_documents += retriever.retrieve(q)
-        if allow_multimodal_for_images:  
-            top_image_description_document = image_retriever.retrieve(q)[0]
-            relavancy_check_response = ImageDescriptionRelavancyCheckAgent().answer_query(query, top_image_description_document, top_image_description_document)
-            if "yes" in relavancy_check_response.lower():
-                response_array.append(append_chat_record_to_chat_history(customer_id, user_id, "bot", "image", rm.get(f'file_system/{top_image_description_document.metadata.get("source")}')))
-                image_relavant_response = QueryAnsweringAgent().answer_query(query, top_image_description_document)
-                response_array.append(append_chat_record_to_chat_history(customer_id, user_id, "bot", "text", image_relavant_response))
+        watchman_agent_decision = WatchmanAgent().guard(q)
+        if "yes" in watchman_agent_decision.lower():
+            print(f'{q} is general')
+            # aggregate_of_general_queries = aggregate_of_general_queries + "\n" + q
+        else:
+            print(f'{q} is specific')
+            retrieved_documents.extend(retriever.retrieve(q))
+            if allow_multimodal_for_images:
+                top_image_document = image_retriever.retrieve(q)[0]
+                relavancy_check_decision = ImageDescriptionRelavancyCheckAgent().answer_query(query, top_image_document.page_content, top_image_document.page_content)
+                print(relavancy_check_decision)
+                if "yes" in relavancy_check_decision.lower():
+                    retrieved_documents.append(top_image_document)
+                    response_array.append(append_chat_record_to_chat_history(customer_id, user_id, "bot", "image", rm.get(f'file_system/{top_image_document.metadata.get("source")}')))
 
-
-    print("MERGING RETRIEVED DOCUMENTS CONTENT...")
-    context = LangchainDocumentsSplitter().merge_documents_to_text(retrieved_documents)
-
-    context_data = rm.get(f'file_system/database/services/{customer_id}/{user_id}.json')
-    context = f"PREVIOUS CHAT SUMMARY : {context_data['chat_history_summary']}\n{context}"
-    print(context)
-
-    print(f'EVALUATING {query}')
-    response = QueryAnsweringAgent().answer_query(query, context)
-
-    # change query to context to get images relavant to context. but also want to retrieve images not bound to any context as well
-    # merged_descriptions = LangchainDocumentsSplitter().merge_documents_to_text(image_description_documents)
-    # change merged_descriptions to context to get context relavant images, or maybe we can keep it directly relavant to the query
-    # relavancy_check_response = ImageDescriptionRelavancyCheckAgent().answer_query(query, merged_descriptions, merged_descriptions)
+    print(retrieved_documents)
+    aggregate_context = LangchainDocumentsMerger().merge_documents_to_string(retrieved_documents)
+    # general_response = GeneralQueryAnsweringAgent().answer(aggregate_of_general_queries)
+    specific_response = QueryAnsweringAgent().answer(query, aggregate_context)
 
     append_chat_record_to_chat_history(customer_id, user_id, "user", "text", query)
-    response_array.append(append_chat_record_to_chat_history(customer_id, user_id, "bot", "text", response))
+    # response_array.append(append_chat_record_to_chat_history(customer_id, user_id, "bot", "text", general_response))
+    response_array.append(append_chat_record_to_chat_history(customer_id, user_id, "bot", "text", specific_response))
+
+    # print("RETRIEVING RELATED DOCUMENTS")
+    # retrieved_documents = []
+    # response_array = []
+
+    # for q in queries:
+    #     retrieved_documents += retriever.retrieve(q)
+    #     # if allow_multimodal_for_images:  
+    #         # top_image_description_document = image_retriever.retrieve(q)[0]
+    #         # relavancy_check_response = ImageDescriptionRelavancyCheckAgent().answer_query(query, top_image_description_document, top_image_description_document)
+    #         # if "yes" in relavancy_check_response.lower():
+    #         #     response_array.append(append_chat_record_to_chat_history(customer_id, user_id, "bot", "image", rm.get(f'file_system/{top_image_description_document.metadata.get("source")}')))
+    #         #     image_relavant_response = QueryAnsweringAgent().answer_query(query, top_image_description_document)
+    #         #     response_array.append(append_chat_record_to_chat_history(customer_id, user_id, "bot", "text", image_relavant_response))
+
+
+    # print("MERGING RETRIEVED DOCUMENTS CONTENT...")
+    # context = LangchainDocumentsMerger().merge_documents_to_string(retrieved_documents)
+
+    # print(f'EVALUATING {query}')
+    # response = QueryAnsweringAgent().answer_query(query, context)
+
+    # # change query to context to get images relavant to context. but also want to retrieve images not bound to any context as well
+    # # merged_descriptions = LangchainDocumentsMerger().merge_documents_to_string(image_description_documents)
+    # # change merged_descriptions to context to get context relavant images, or maybe we can keep it directly relavant to the query
+    # # relavancy_check_response = ImageDescriptionRelavancyCheckAgent().answer_query(query, merged_descriptions, merged_descriptions)
+
+    # append_chat_record_to_chat_history(customer_id, user_id, "user", "text", query)
+    # response_array.append(append_chat_record_to_chat_history(customer_id, user_id, "bot", "text", response))
     
     return jsonify({
             "success":"true",
@@ -220,7 +244,7 @@ def append_chat_record_to_chat_history(customer_id, user_id, by, type, content):
 
     chat_context["chat_history"].append(chat_record)
     chat_context["chat_history_size"] = chat_context["chat_history_size"] + 1
-    chat_context["chat_history_summary"] = SummarizingAgent().summarize_query(f"{chat_context["chat_history_summary"]}\n{content}")
+    # chat_context["chat_history_summary"] = SummarizingAgent().summarize_query(f"{chat_context["chat_history_summary"]}\n{content}")
 
     rm.set(f'file_system/database/services/{customer_id}/{user_id}.json', chat_context)
 

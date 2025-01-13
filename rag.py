@@ -28,6 +28,8 @@ class KnowledgeArtifactLoader:
         try:
             loader = TextLoader(path)
             document = loader.load()
+            for d in document:
+                d.metadata = {"source": path}
             return document
         except Exception as e:
             print(f"ERROR LOADING TEXT FILE: {e}")
@@ -51,6 +53,7 @@ class KnowledgeArtifactLoader:
             loader = PyPDFLoader(path)
             documents = []
             for doc in loader.lazy_load():
+                doc.metadata = {"source": path}
                 documents.append(doc)
             return documents
         
@@ -91,10 +94,10 @@ class KnowledgeArtifactLoader:
         
 class LangchainDocumentsSplitter:
     def __init__(self):
-        pass
+        self.merger = LangchainDocumentsMerger()
 
     def split(self, documents):
-        content = self.merge_documents_to_text(documents)
+        content = self.merger.merge_documents_to_string(documents)
         splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
         split_texts = splitter.split_text(content)
         split_documents = []
@@ -102,14 +105,26 @@ class LangchainDocumentsSplitter:
             metadata = documents[0].metadata if documents else {}
             split_documents.append(Document(page_content=text, metadata=metadata))
         return split_documents
-    
-    def merge_documents_to_text(self, documents):
-        combined_text = StringIO()
+
+class LangchainDocumentsMerger:
+    def __init__(self):
+        pass
+
+    def merge_documents_to_string(self, documents):
+        buffer = StringIO()
         for document in documents:
-            combined_text.write(document.page_content + "\n")
-        text = combined_text.getvalue()
-        combined_text.close()
-        return text
+            buffer.write(document.page_content + "\n")
+        merged_content = buffer.getvalue()
+        buffer.close()
+        return merged_content
+    
+    def merge_documents_to_document(self, documents):
+        merged_content = self.merge_documents_to_string(documents)
+        document = [Document(
+            page_content=merged_content,
+            metadata = {}
+        )]
+        return document
     
 class LangchainDocumentChunksEmbedder:
     def __init__(self, model = "models/embedding-001"):
