@@ -57,7 +57,7 @@ class QueryPreprocessingAgent:
         """)
         chain = prompt | self.gemini_client | StrOutputParser()
         response = chain.invoke(query)
-        return [q.strip() for q in response.split("\n") if q.strip()]
+        return [q.strip() for q in response.split("\\n") if q.strip()]
 
     def augment_query(self, query):
         prompt = PromptTemplate.from_template("""

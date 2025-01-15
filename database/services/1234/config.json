@@ -1,6 +1,6 @@
 {
     "customer_id": "1234",
-    "customer_name": "Example Service",
+    "customer_name": "swigato",
     "moderators": [
         {
             "moderator_id": "1",
@@ -13,11 +13,14 @@
             "allowed": false
         }
     ],
-    "active_users": [1234, 2345],
+    "active_users": [
+        1234,
+        2345
+    ],
     "allowed": true,
     "allow_web_access": true,
     "personality_prompt": "Please ensure the responses are polite and concise.",
     "custom_welcome_message": "Welcome to Example Service, how can I assist you today?",
-    "allow_multimodal_for_images": true,
+    "allow_multimodal_for_images": false,
     "knowledge_summary": "topic 1: vacuum cleaners\\nThe document is a user manual for a vacuum cleaner. It provides instructions on its proper use, maintenance, and safety. Key sections include:\\n\\nSafety Instructions: Covers safe usage practices such as voltage requirements, avoiding wet surfaces, not using damaged cords, and keeping the vacuum away from children or flammable materials.\\n\\nTechnical Specifications: Includes details about voltage, power, and component descriptions like the hose, brushes, and nozzles.\\n\\nComponent Functions: Explains how to use the vacuum's features, such as the suction control, blower function, and different cleaning nozzles.\\n\\nMaintenance: Includes instructions for unclogging the hose, emptying the dust compartment, cleaning filters and other components, and proper storage.\\n\\nUsage Instructions: Describes how to assemble and operate the vacuum cleaner for various tasks.\\n\\nFilter System Options: Provides guidance on switching between the water filter system and an SMS cloth bag for collecting dust.\\n\\nIt emphasizes reading and adhering to the instructions for safe and effective use.\\n\\nHere's a comprehensive summary of Zomato's Code of Conduct:\\n\\n\\nTopic 2: Zomato's Code of Conduct\\n\\nThis document outlines Zomato's core values and ethical standards that all employees must follow. The key aspects include:\\n\\nEthics and Compliance:\\n- Employees must conduct business with the highest standards of ethical behavior\\n- Full compliance with all applicable laws and regulations is mandatory\\n- Zero tolerance for bribery, corruption, and money laundering\\n- Commitment to fair competition and anti-trust compliance\\n\\nWorkplace Conduct and Culture:\\n- Promotes diversity, inclusion, and equal opportunity\\n- Zero tolerance for workplace harassment of any kind\\n- Commitment to health and safety in the workplace\\n- Strict policies against substance abuse and weapons\\n- Protection of human rights and prohibition of child labor\\n\\nInformation and Asset Protection:\\n- Strict guidelines on protecting confidential information\\n- Proper use of company assets and IT systems\\n- Detailed insider trading prevention policies, including restrictions on trading Zomato shares\\n- Maintenance of accurate financial records and cooperation with auditors\\n\\nExternal Relations:\\n- Guidelines for external communication and media interaction\\n- Responsible social media usage with appropriate disclaimers\\n- Ethical advertising practices\\n- Apolitical stance with restrictions on political activities\\n\\nReporting and Investigations:\\n- Multiple channels for reporting concerns (HR, dedicated email addresses)\\n- Thorough investigation process for reported violations\\n- Protection against retaliation for good faith reporting\\n- Clear consequences for code violations, ranging from warnings to termination\\n\\nThe document emphasizes personal responsibility, good judgment, and the importance of seeking guidance when unclear about proper conduct. It applies to all employees and requires annual acknowledgment of compliance. The code is designed to protect both the company's interests and maintain its reputation while ensuring ethical business practices across all operations."
 }

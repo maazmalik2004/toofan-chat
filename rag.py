@@ -24,36 +24,36 @@ class KnowledgeArtifactLoader:
          })
         self.image_description_generator = ImageToDescriptionAgent()
 
-    def load_text(self, path):
+    def load_text(self, path, artifact_id):
         try:
             loader = TextLoader(path)
             document = loader.load()
             for d in document:
-                d.metadata = {"source": path}
+                d.metadata = {"source": path, "artifact_id":artifact_id}
             return document
         except Exception as e:
             print(f"ERROR LOADING TEXT FILE: {e}")
             raise
 
-    def load_image(self, path):
+    def load_image(self, path, artifact_id):
         try:
             base_64_image = self.resource_manager.get(f'file_system/{path}')
             description = self.image_description_generator.describe(base_64_image)
             document = [Document(
                 page_content=description,
-                metadata={"source": path}
+                metadata={"source": path, "artifact_id":artifact_id}
             )]
             return document
         except Exception as e:
             print(f"ERROR LOADING AND PROCESSING IMAGE: {e}")
             raise
 
-    def load_pdf(self, path):
+    def load_pdf(self, path, artifact_id):
         try:
             loader = PyPDFLoader(path)
             documents = []
             for doc in loader.lazy_load():
-                doc.metadata = {"source": path}
+                doc.metadata = {"source": path, "artifact_id":artifact_id}
                 documents.append(doc)
             return documents
         
@@ -61,7 +61,7 @@ class KnowledgeArtifactLoader:
             print(f"ERROR LOADING PDF: {e}")
             raise
 
-    def load_images_from_pdf(self, path):
+    def load_images_from_pdf(self, path, artifact_id):
         # take in pdf,
         # extract images and save
         # for each image, load_image(path to image)
@@ -83,7 +83,7 @@ class KnowledgeArtifactLoader:
                     with open(image_path,"wb") as image_file:
                         image_file.write(image_bytes)
 
-                    documents = documents + self.load_image(image_path)
+                    documents = documents + self.load_image(image_path, artifact_id)
 
             pdf.close()
             print(documents)
@@ -152,7 +152,9 @@ class LangchainDocumentChunksEmbedder:
                 vector_store_path, embeddings=self.embedder, allow_dangerous_deserialization=True
             )
         return vector_store
-
+    
+    def set_vector_store(self, path, vector_store):
+        vector_store.save_local(path)
     
 class LangchainDocumentChunksRetriever:
     def __init__(self, vector_store, number_of_results = 5):

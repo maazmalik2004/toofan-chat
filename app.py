@@ -3,6 +3,8 @@ import asyncio
 import os
 from uuid import uuid4
 from datetime import datetime
+import json
+from pprint import pprint
 
 from FileSystemInterface import FileSystemInterface
 from ResourceManager import ResourceManager
@@ -106,34 +108,6 @@ async def handle_query():
     # response_array.append(chat_history_manager.append(customer_id, user_id, "bot", "text", general_response))
     response_array.append(chat_history_manager.append(customer_id, user_id, "bot", "text", specific_response))
 
-    # print("RETRIEVING RELATED DOCUMENTS")
-    # retrieved_documents = []
-    # response_array = []
-
-    # for q in queries:
-    #     retrieved_documents += retriever.retrieve(q)
-    #     # if allow_multimodal_for_images:  
-    #         # top_image_description_document = image_retriever.retrieve(q)[0]
-    #         # relavancy_check_response = ImageDescriptionRelavancyCheckAgent().answer_query(query, top_image_description_document, top_image_description_document)
-    #         # if "yes" in relavancy_check_response.lower():
-    #         #     response_array.append(chat_history_manager.append(customer_id, user_id, "bot", "image", rm.get(f'file_system/{top_image_description_document.metadata.get("source")}')))
-    #         #     image_relavant_response = QueryAnsweringAgent().answer_query(query, top_image_description_document)
-    #         #     response_array.append(chat_history_manager.append(customer_id, user_id, "bot", "text", image_relavant_response))
-
-
-    # print("MERGING RETRIEVED DOCUMENTS CONTENT...")
-    # context = LangchainDocumentsMerger().merge_documents_to_string(retrieved_documents)
-
-    # print(f'EVALUATING {query}')
-    # response = QueryAnsweringAgent().answer_query(query, context)
-
-    # # change query to context to get images relavant to context. but also want to retrieve images not bound to any context as well
-    # # merged_descriptions = LangchainDocumentsMerger().merge_documents_to_string(image_description_documents)
-    # # change merged_descriptions to context to get context relavant images, or maybe we can keep it directly relavant to the query
-    # # relavancy_check_response = ImageDescriptionRelavancyCheckAgent().answer_query(query, merged_descriptions, merged_descriptions)
-
-    # chat_history_manager.append(customer_id, user_id, "user", "text", query)
-    # response_array.append(chat_history_manager.append(customer_id, user_id, "bot", "text", response))
     
     return jsonify({
             "success":"true",
@@ -143,18 +117,6 @@ async def handle_query():
 
 @app.route("/chat/history", methods = ["POST"])
 async def handle_history():
-    # we receive request and we send a page of chat history let say 3...
-    # request format
-    # [0 1 2 3 4 5 6 7 8 9(most recent)] for 0th page... (len - 1) to (len-page_size*page_number-page_size)...for 1'st page (len-page_size*page_number-1) to (len-len-page_size*page_number-page_size) if start is less than 0, start should be 0 and end should be 
-    # if end is greater than len-1, end should be len-1... case will never be achieved
-    """
-    {
-        customer_id
-        user_id
-        page_number
-        page_size
-    }
-    """
     body = request.get_json()
     customer_id = body.get("customer_id")
     user_id = body.get("user_id")
@@ -189,46 +151,125 @@ async def handle_history():
         "chat_history_page":chat_history[start:end+1]
     })
 
-@app.route('/moderator/upload', methods = ['POST'])
+@app.route('/bot/knowledge', methods = ['POST'])
 async def handle_upload():
-    file = request.files.get("file")
+    files = request.files.getlist("files")
     customer_id = request.form.get("customer_id")
-    moderator_id = request.form.get("moderator_id")
+    admin_id = request.form.get("admin_id")
 
-    if file:   
+    uploaded_artifacts = []
+
+    for file in files:
+        artifact_id = str(uuid4())
+        
         if file.filename.lower().endswith(".pdf"):
-            path = f'database/services/{customer_id}/knowledge_base/{str(uuid4())}{file.filename}'
+            path = f'database/services/{customer_id}/knowledge_base/{artifact_id}.pdf'
             file.save(path)
-            pages = KnowledgeArtifactLoader().load_pdf(path)
-            image_descriptions = KnowledgeArtifactLoader().load_images_from_pdf(path)
+            # image_descriptions_task =  asyncio.create_task(asyncio.to_thread(KnowledgeArtifactLoader().load_images_from_pdf(path)))
+            # pages_task = asyncio.create_task(asyncio.to_thread(KnowledgeArtifactLoader().load_pdf(path)))
+            # image_descriptions, pages = await asyncio.gather(image_descriptions_task, pages_task)
+            pages = KnowledgeArtifactLoader().load_pdf(path, artifact_id)
+            image_descriptions = KnowledgeArtifactLoader().load_images_from_pdf(path, artifact_id)
             chunks = LangchainDocumentsSplitter().split(pages)
             vector_store = LangchainDocumentChunksEmbedder().embed(f'database/services/{customer_id}/knowledge_base/vector_store',chunks)
             image_vector_store = LangchainDocumentChunksEmbedder().embed(f'database/services/{customer_id}/knowledge_base/image_vector_store',image_descriptions)
+            uploaded_artifacts.append({
+                "artifact_name":file.filename,
+                "artifact_id":artifact_id
+            })
 
         if file.filename.lower().endswith(".txt"):
-            path = f'database/services/{customer_id}/knowledge_base/{str(uuid4())}{file.filename}'
+            path = f'database/services/{customer_id}/knowledge_base/{artifact_id}.txt'
             file.save(path)
-            pages = KnowledgeArtifactLoader().load_text(path)
+            pages = KnowledgeArtifactLoader().load_text(path, artifact_id)
             chunks = LangchainDocumentsSplitter().split(pages)
             vector_store = LangchainDocumentChunksEmbedder().embed(f'database/services/{customer_id}/knowledge_base/vector_store',chunks)
             print(vector_store.index.ntotal)
+            uploaded_artifacts.append({
+                "artifact_name":file.filename,
+                "artifact_id":artifact_id
+            })
 
         if file.filename.lower().endswith((".png", ".jpg", ".jpeg")):
-            path = f'database/services/{customer_id}/knowledge_base/{str(uuid4())}{file.filename}'
+            fname, fextension = os.path.splitext(file.filename)
+            path = f'database/services/{customer_id}/knowledge_base/{str(uuid4())}{fextension.lower()}'
             file.save(path)
-            image_descriptions = KnowledgeArtifactLoader().load_image(path)
+            image_descriptions = KnowledgeArtifactLoader().load_image(path, artifact_id)
             vector_store = LangchainDocumentChunksEmbedder().embed(f'database/services/{customer_id}/knowledge_base/image_vector_store',image_descriptions)
             print(vector_store.index.ntotal)
+            uploaded_artifacts.append({
+                "artifact_name":file.filename,
+                "artifact_id":artifact_id
+            })
 
-        return jsonify({
-            "success":"true",
-            "message":"file uploaded successfully"
-        })
 
     return jsonify({
-            "success":"false",
-            "message":"file upload failed. no file provided or invalid file format (.pdf, .txt, .jpg, .jpeg, .png) allowed"
+            "success":"true",
+            "message":"files uploaded successfully",
+            "uploaded_artifacts":uploaded_artifacts
         })
+
+@app.route("/<customer_id>/bot/knowledge", methods=["DELETE"])
+async def handle_delete(customer_id):
+    print("DELETING PROVIDED KNOWLEDGE")
+    
+    body = request.get_json()
+    artifact_ids = body.get("artifacts")
+    artifact_ids = set(artifact_ids)
+
+    vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
+    
+    dictionary = vector_store.docstore._dict
+    pprint(dictionary)
+    print(len(dictionary))
+
+    # for key, value in dictionary.items():
+    #     value.metadata["test_value"] = 10
+
+    vector_store_ids_to_be_deleted = []
+    for key, value in dictionary.items():
+        if value.metadata.get("artifact_id") in artifact_ids:
+            vector_store_ids_to_be_deleted.append(key)
+
+    print(vector_store.delete(ids = vector_store_ids_to_be_deleted))
+
+    LangchainDocumentChunksEmbedder().set_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store', vector_store)
+    
+    await asyncio.sleep(10)
+
+    vector_store = None
+    dictionary = None
+    vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
+
+    dictionary = vector_store.docstore._dict
+    pprint(dictionary)
+    print(len(dictionary))
+
+    return jsonify({
+        "success":"true",
+        "message": "Knowledge deleted successfully"
+    })
+
+
+@app.route("/bot/config", methods = ["POST"])
+async def handle_config_update():
+    print("MODIFYING CONFIGURATION")
+    body = request.get_json()
+    customer_id = body.get("customer_id")
+    config_updates = body.get("config")
+
+    config = rm.get(f"file_system/database/services/{customer_id}/config.json")
+
+    for key, value in config_updates.items():
+        config[key] = value
+
+    rm.set(f"file_system/database/services/{customer_id}/config.json", config)
+
+    return jsonify({
+        "success":"true",
+        "message":"config updated successfully",
+        "updated_config":config
+    })
 
 if __name__ == '__main__':
     app.run(debug=True)
