@@ -26,6 +26,7 @@ class KnowledgeArtifactLoader:
 
     def load_text(self, path, artifact_id):
         try:
+            print("LOADING TEXT")
             loader = TextLoader(path)
             document = loader.load()
             for d in document:
@@ -37,6 +38,7 @@ class KnowledgeArtifactLoader:
 
     def load_image(self, path, artifact_id):
         try:
+            print("LOADING IMAGE")
             base_64_image = self.resource_manager.get(f'file_system/{path}')
             description = self.image_description_generator.describe(base_64_image)
             document = [Document(
@@ -50,6 +52,7 @@ class KnowledgeArtifactLoader:
 
     def load_pdf(self, path, artifact_id):
         try:
+            print("LOADING PDF")
             loader = PyPDFLoader(path)
             documents = []
             for doc in loader.lazy_load():
@@ -68,6 +71,7 @@ class KnowledgeArtifactLoader:
         # return array of documents... we wont split these documents but simply embed it directly.
 
         try:
+            print("EXTRACTING IMAGES FROM PDF")
             pdf = self.resource_manager.get(f'file_system/{path}')
             documents = []
             

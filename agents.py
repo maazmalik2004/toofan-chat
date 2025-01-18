@@ -4,7 +4,10 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
+from langchain import hub
+
 import os
+import re
 
 # temporary imports for testing
 # from dotenv import load_dotenv
@@ -51,14 +54,15 @@ class QueryPreprocessingAgent:
             Break the following query into component sub-queries.
             Output each sub-query on a new line.
             Strictly avoid redundant sub-queries and keep the form of the sub query same as the original query wherever possible
-            Strictly follow the following format and output text in the following format \"sub_query1 \\n sub_query2 \\n sub_query3 ...\"                            
+            Strictly follow the following format and output text in the following format "<sub_query1> \n <sub_query2> \n <sub_query3> ..."                            
             
             Query: {query}
         """)
         chain = prompt | self.gemini_client | StrOutputParser()
         response = chain.invoke(query)
-        return [q.strip() for q in response.split("\\n") if q.strip()]
-
+        # return [q.strip() for q in re.split(r'\\?n', response) if q.strip()]
+        return [q.strip() for q in response.split("\n") if q.strip()]
+    
     def augment_query(self, query):
         prompt = PromptTemplate.from_template("""
             Augment the following query into 3 variations while preserving the meaning of the query.
@@ -72,21 +76,27 @@ class QueryPreprocessingAgent:
     
 class SummarizingAgent:
     def __init__(self, model = "gemini-1.5-flash"):
-        self.gemini_client = ChatGoogleGenerativeAI(model=model)
-        self.model = model
+        self.llm = ChatGoogleGenerativeAI(model=model)
 
-    def summarize_query(self, query):
-        prompt = PromptTemplate.from_template("""
-            summarize the following query. Avoid loosing meaning or information
-            Query: {query}
-            Summary:
-        """)
+    def summarize_from_documents(self, documents):
+        print("SUMMARIZING")
+        map_prompt = hub.pull("rlm/map-prompt")
+        print(map_prompt)
+        reduce_prompt = hub.pull("rlm/reduce-prompt")
+        print(reduce_prompt)
 
-        chain = prompt | self.gemini_client | StrOutputParser()
+        summaries = []
+        for d in documents:
+            response = self.llm.invoke(map_prompt.format(docs=d.page_content))
+            summaries.append(response.content)
+            print(response)
 
-        response = chain.invoke(query)
+        final_summary = self.llm.invoke(
+        reduce_prompt.format(doc_summaries="\n\n".join(summaries))).content
 
-        return response
+        print(final_summary)
+
+        return final_summary
     
 class QueryAnsweringAgent:
     def __init__(self, model = "gemini-1.5-flash"):

@@ -23,6 +23,7 @@ rm = ResourceManager(location_interface_map = {
          })
 chat_history_manager = ChatHistoryManager(resource_manager=rm)
 
+
 # config = rm.get("file_system/database/environment/config.json")
 @app.route('/')
 def handle_root():
@@ -57,6 +58,7 @@ async def handle_query():
 
     customer_config = rm.get(f'file_system/database/services/{customer_id}/config.json')
     allow_multimodal_for_images = customer_config["allow_multimodal_for_images"]
+    use_query_filtering = customer_config["use_query_filtering"]
 
     image_vector_store = None
     image_retriever = None
@@ -77,23 +79,38 @@ async def handle_query():
     queries = QueryPreprocessingAgent().break_query(query)
     print(queries)
 
+    aggregate_summary = ""
+    knowledge_summaries = customer_config["knowledge_summaries"]
+    for ks in knowledge_summaries:
+        print(ks.get("artifact_id"))
+        aggregate_summary = aggregate_summary + "\n" + ks.get("artifact_summary")
+    print(aggregate_summary)
+
     # aggregate_of_general_queries = ""
     retrieved_documents = []
     response_array = []
 
-    knowledge_summary = customer_config["knowledge_summary"]
-
     for q in queries:
-        watchman_agent_decision = WatchmanAgent().guard(q, knowledge_summary)
-        if "yes" in watchman_agent_decision.lower():
-            print(f'{q} is general')
-            # aggregate_of_general_queries = aggregate_of_general_queries + "\n" + q
+        if use_query_filtering:
+            watchman_agent_decision = WatchmanAgent().guard(q, aggregate_summary)
+            if "yes" in watchman_agent_decision.lower():
+                print(f'{q} is general')
+                # aggregate_of_general_queries = aggregate_of_general_queries + "\n" + q
+            else:
+                print(f'{q} is specific')
+                retrieved_documents.extend(retriever.retrieve(q))
+                if allow_multimodal_for_images:
+                    top_image_document = image_retriever.retrieve(q)[0]
+                    relavancy_check_decision = ImageDescriptionRelavancyCheckAgent().answer_query(q, top_image_document.page_content, top_image_document.page_content)
+                    print(relavancy_check_decision)
+                    if "yes" in relavancy_check_decision.lower():
+                        retrieved_documents.append(top_image_document)
+                        response_array.append(chat_history_manager.append(customer_id, user_id, "bot", "image", rm.get(f'file_system/{top_image_document.metadata.get("source")}')))
         else:
-            print(f'{q} is specific')
             retrieved_documents.extend(retriever.retrieve(q))
             if allow_multimodal_for_images:
                 top_image_document = image_retriever.retrieve(q)[0]
-                relavancy_check_decision = ImageDescriptionRelavancyCheckAgent().answer_query(query, top_image_document.page_content, top_image_document.page_content)
+                relavancy_check_decision = ImageDescriptionRelavancyCheckAgent().answer_query(q, top_image_document.page_content, top_image_document.page_content)
                 print(relavancy_check_decision)
                 if "yes" in relavancy_check_decision.lower():
                     retrieved_documents.append(top_image_document)
@@ -157,6 +174,9 @@ async def handle_upload():
     customer_id = request.form.get("customer_id")
     admin_id = request.form.get("admin_id")
 
+    customer_config = rm.get(f'file_system/database/services/{customer_id}/config.json')
+    knowledge_summaries = customer_config.get("knowledge_summaries")
+
     uploaded_artifacts = []
 
     for file in files:
@@ -169,6 +189,11 @@ async def handle_upload():
             # pages_task = asyncio.create_task(asyncio.to_thread(KnowledgeArtifactLoader().load_pdf(path)))
             # image_descriptions, pages = await asyncio.gather(image_descriptions_task, pages_task)
             pages = KnowledgeArtifactLoader().load_pdf(path, artifact_id)
+            summary = SummarizingAgent().summarize_from_documents(pages)
+            knowledge_summaries.append({
+                "artifact_id":artifact_id,
+                "artifact_summary":summary
+            })
             image_descriptions = KnowledgeArtifactLoader().load_images_from_pdf(path, artifact_id)
             chunks = LangchainDocumentsSplitter().split(pages)
             vector_store = LangchainDocumentChunksEmbedder().embed(f'database/services/{customer_id}/knowledge_base/vector_store',chunks)
@@ -182,6 +207,11 @@ async def handle_upload():
             path = f'database/services/{customer_id}/knowledge_base/{artifact_id}.txt'
             file.save(path)
             pages = KnowledgeArtifactLoader().load_text(path, artifact_id)
+            summary = SummarizingAgent().summarize_from_documents(pages)
+            knowledge_summaries.append({
+                "artifact_id":artifact_id,
+                "artifact_summary":summary
+            })
             chunks = LangchainDocumentsSplitter().split(pages)
             vector_store = LangchainDocumentChunksEmbedder().embed(f'database/services/{customer_id}/knowledge_base/vector_store',chunks)
             print(vector_store.index.ntotal)
@@ -195,6 +225,11 @@ async def handle_upload():
             path = f'database/services/{customer_id}/knowledge_base/{str(uuid4())}{fextension.lower()}'
             file.save(path)
             image_descriptions = KnowledgeArtifactLoader().load_image(path, artifact_id)
+            summary = SummarizingAgent().summarize_from_documents(image_descriptions)
+            knowledge_summaries.append({
+                "artifact_id":artifact_id,
+                "artifact_summary":summary
+            })
             vector_store = LangchainDocumentChunksEmbedder().embed(f'database/services/{customer_id}/knowledge_base/image_vector_store',image_descriptions)
             print(vector_store.index.ntotal)
             uploaded_artifacts.append({
@@ -202,6 +237,7 @@ async def handle_upload():
                 "artifact_id":artifact_id
             })
 
+    rm.set(f'file_system/database/services/{customer_id}/config.json', customer_config)
 
     return jsonify({
             "success":"true",
@@ -216,6 +252,13 @@ async def handle_delete(customer_id):
     body = request.get_json()
     artifact_ids = body.get("artifacts")
     artifact_ids = set(artifact_ids)
+
+    customer_config = rm.get(f'file_system/database/services/{customer_id}/config.json')
+    knowledge_summaries = customer_config.get("knowledge_summaries")
+
+    customer_config["knowledge_summaries"] = [ks for ks in knowledge_summaries if ks["artifact_id"] not in artifact_ids]
+
+    rm.set(f'file_system/database/services/{customer_id}/config.json', customer_config)
 
     vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
     
