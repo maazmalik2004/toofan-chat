@@ -25,11 +25,10 @@ chat_history_manager = ChatHistoryManager(resource_manager=rm)
 
 
 # config = rm.get("file_system/database/environment/config.json")
-@app.route('/')
-def handle_root():
+@app.route('/api/v1/health', methods=["GET"])
+def handle_health_check():
     return jsonify({
-        "success":"true",
-        "message":"welcome to Toofan chat !"
+        "status":"healthy"
     })
 
 @app.route('/chat/connect', methods=['POST'])
