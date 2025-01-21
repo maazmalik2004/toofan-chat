@@ -1,0 +1,19 @@
+{
+    "customer_id": "0000",
+    "customer_name": "zomato",
+    "moderators": [],
+    "active_users": [],
+    "allowed": true,
+    "allow_web_access": false,
+    "personality_prompt": "",
+    "custom_welcome_message": "welcome!, how may I assist you today.",
+    "allow_multimodal_for_images": "false",
+    "knowledge_summaries": [
+        {
+            "artifact_id": "0cf94a04-c54d-45ee-9c18-993c7b16e948",
+            "artifact_summary": "Based on the provided summaries, the overarching main themes across all Zomato documents are:\n\n* **Ethical Conduct and Compliance:** This encompasses a broad range of behaviors, including ethical business practices, adherence to laws and regulations (anti-bribery, anti-money laundering, antitrust, etc.), fair competition, and preventing conflicts of interest.  This theme is consistently emphasized across all documents.\n\n* **Confidentiality and Data Security:**  Protecting sensitive company information, including financial data, intellectual property, and employee information, is a recurring theme.  This includes responsible use of company assets and information technology.\n\n* **Employee Responsibility and Accountability:**  All documents stress the individual responsibility of employees to understand and adhere to the Code of Conduct, report violations, and avoid actions that could harm the company.  This includes clear outlines of consequences for non-compliance.\n\n* **Whistleblower Protection:**  Protecting employees who report violations, regardless of the outcome of the investigation, is a significant theme, emphasizing good faith reporting and prohibiting retaliation.\n\n* **Workplace Wellness and Diversity & Inclusion:** While not as consistently present as the other themes, several documents highlight Zomato's commitment to creating a safe, inclusive, and supportive work environment, free from harassment and discrimination.\n\n\nThese five themes represent the core principles and values underlying Zomato's internal policies and procedures.  Specific sub-themes, such as insider trading prevention, social responsibility, and financial integrity, fall under these broader categories.\n"
+        }
+    ],
+    "use_query_filtering": false,
+    "key": "value"
+}
