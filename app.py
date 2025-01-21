@@ -9,6 +9,7 @@ from pprint import pprint
 from FileSystemInterface import FileSystemInterface
 from ResourceManager import ResourceManager
 from ChatHistoryManager import   ChatHistoryManager
+from DefaultConfigManager import DefaultConfigManager
 
 from rag import KnowledgeArtifactLoader, LangchainDocumentsSplitter,LangchainDocumentsMerger,  LangchainDocumentChunksEmbedder, LangchainDocumentChunksRetriever
 from agents import QueryPreprocessingAgent, SummarizingAgent, QueryAnsweringAgent, ImageDescriptionRelavancyCheckAgent, WatchmanAgent, GeneralQueryAnsweringAgent
@@ -22,14 +23,14 @@ rm = ResourceManager(location_interface_map = {
              "file_system": FileSystemInterface()
          })
 chat_history_manager = ChatHistoryManager(resource_manager=rm)
+default_config_manager = DefaultConfigManager(resource_manager=rm)
 
 
-# config = rm.get("file_system/database/environment/config.json")
 @app.route('/api/v1/health', methods=["GET"])
 def handle_health_check():
     return jsonify({
         "status":"healthy"
-    })
+    }),200
 
 @app.route('/api/v1/connect', methods=['POST'])
 async def handle_connect():
@@ -52,15 +53,15 @@ async def handle_connect():
                 "result":"true",
                 "message":"connected",
                 "chat_response":[{**welcome_chat_context }]
-            })
+            }),200
     
     except Exception as e:
         return jsonify({
             "result":"false",
-            "message":str(e),
-        })
+            "message":"invalid request",
+        }),400
 
-@app.route("/api/v1/config", methods = ["POST"])
+@app.route("/api/v1/config", methods = ["PUT"])
 async def handle_config_update():
     try:
         print("MODIFYING CONFIGURATION")
@@ -69,13 +70,13 @@ async def handle_config_update():
         config_updates = body.get("config")
 
         config = rm.get(f"file_system/database/services/{customer_id}/config.json")
-        creation_flag = False
+        config_already_exists = False
 
         if not config:
             # creating config with default value
-            config = rm.get(f"file_system/database/environment/default_config.json")
+            config = default_config_manager.get_default_config(customer_id)
             rm.set(f"file_system/database/services/{customer_id}/config.json", config)
-            creation_flag = True
+            config_already_exists = True
 
         # updating config
         for key, value in config_updates.items():
@@ -83,7 +84,7 @@ async def handle_config_update():
         
         rm.set(f"file_system/database/services/{customer_id}/config.json", config)
 
-        if creation_flag:
+        if config_already_exists:
             return jsonify({
                 "result":"true",
                 "message":"config created",
@@ -92,63 +93,74 @@ async def handle_config_update():
         return jsonify({
             "result":"true",
             "message":"config updated",
-        })
+        }),200
     except Exception as e:
         return jsonify({
             "result":"false",
-            "message":str(e),
-        })
+            "message":"invalid request",
+        }),400
 
 
-@app.route('/chat/query', methods=['POST'])
+@app.route('/api/v1/query', methods=['POST'])
 async def handle_query():
-    body = request.get_json()
-    customer_id = body.get("customer_id")
-    user_id = body.get("user_id")
-    query = body.get("query")
+    try:
+        body = request.get_json()
+        customer_id = body.get("customer_id")
+        user_id = body.get("user_id")
+        query = body.get("query")
 
-    customer_config = rm.get(f'file_system/database/services/{customer_id}/config.json')
-    allow_multimodal_for_images = customer_config["allow_multimodal_for_images"]
-    use_query_filtering = customer_config["use_query_filtering"]
+        customer_config = rm.get(f'file_system/database/services/{customer_id}/config.json')
+        allow_multimodal_for_images = customer_config["allow_multimodal_for_images"]
+        use_query_filtering = customer_config["use_query_filtering"]
 
-    image_vector_store = None
-    image_retriever = None
-    top_image_document = None
-    relavancy_check_decision = None
-    
-    print("GETTING VECTOR STORE...")
-    vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
-    if allow_multimodal_for_images:     
-        image_vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/image_vector_store')
+        image_vector_store = None
+        image_retriever = None
+        top_image_document = None
+        relavancy_check_decision = None
+        
+        print("GETTING VECTOR STORE...")
+        vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
+        if allow_multimodal_for_images:     
+            image_vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/image_vector_store')
 
-    print("INITIALIZING RETRIEVER...")
-    retriever = LangchainDocumentChunksRetriever(vector_store)
-    if allow_multimodal_for_images:  
-        image_retriever = LangchainDocumentChunksRetriever(image_vector_store)
+        print("INITIALIZING RETRIEVER...")
+        retriever = LangchainDocumentChunksRetriever(vector_store)
+        if allow_multimodal_for_images:  
+            image_retriever = LangchainDocumentChunksRetriever(image_vector_store)
 
-    print("BREAKING QUERY...")
-    queries = QueryPreprocessingAgent().break_query(query)
-    print(queries)
+        print("BREAKING QUERY...")
+        queries = QueryPreprocessingAgent().break_query(query)
+        print(queries)
 
-    aggregate_summary = ""
-    knowledge_summaries = customer_config["knowledge_summaries"]
-    for ks in knowledge_summaries:
-        print(ks.get("artifact_id"))
-        aggregate_summary = aggregate_summary + "\n" + ks.get("artifact_summary")
-    print(aggregate_summary)
+        print("FETCHING KNOWLEDGE SUMMARIES")
+        aggregate_summary = ""
+        knowledge_summaries = customer_config["knowledge_summaries"]
+        for ks in knowledge_summaries:
+            print(ks.get("artifact_id"))
+            aggregate_summary = aggregate_summary + "\n" + ks.get("artifact_summary")
+        print(aggregate_summary)
 
-    # aggregate_of_general_queries = ""
-    retrieved_documents = []
-    response_array = []
+        # aggregate_of_general_queries = ""
+        retrieved_documents = []
+        images_array = []
 
-    for q in queries:
-        if use_query_filtering:
-            watchman_agent_decision = WatchmanAgent().guard(q, aggregate_summary)
-            if "yes" in watchman_agent_decision.lower():
-                print(f'{q} is general')
-                # aggregate_of_general_queries = aggregate_of_general_queries + "\n" + q
+        for q in queries:
+            if use_query_filtering:
+                watchman_agent_decision = WatchmanAgent().guard(q, aggregate_summary)
+                if "yes" in watchman_agent_decision.lower():
+                    print(f'{q} is general')
+                    # aggregate_of_general_queries = aggregate_of_general_queries + "\n" + q
+                else:
+                    print(f'{q} is specific')
+                    retrieved_documents.extend(retriever.retrieve(q))
+                    if allow_multimodal_for_images:
+                        top_image_document = image_retriever.retrieve(q)[0]
+                        relavancy_check_decision = ImageDescriptionRelavancyCheckAgent().answer_query(q, top_image_document.page_content, top_image_document.page_content)
+                        print(relavancy_check_decision)
+                        if "yes" in relavancy_check_decision.lower():
+                            retrieved_documents.append(top_image_document)
+                            images_array.append(chat_history_manager.append(customer_id, user_id, "bot", "image", rm.get(f'file_system/{top_image_document.metadata.get("source")}')))
             else:
-                print(f'{q} is specific')
                 retrieved_documents.extend(retriever.retrieve(q))
                 if allow_multimodal_for_images:
                     top_image_document = image_retriever.retrieve(q)[0]
@@ -156,77 +168,40 @@ async def handle_query():
                     print(relavancy_check_decision)
                     if "yes" in relavancy_check_decision.lower():
                         retrieved_documents.append(top_image_document)
-                        response_array.append(chat_history_manager.append(customer_id, user_id, "bot", "image", rm.get(f'file_system/{top_image_document.metadata.get("source")}')))
-        else:
-            retrieved_documents.extend(retriever.retrieve(q))
-            if allow_multimodal_for_images:
-                top_image_document = image_retriever.retrieve(q)[0]
-                relavancy_check_decision = ImageDescriptionRelavancyCheckAgent().answer_query(q, top_image_document.page_content, top_image_document.page_content)
-                print(relavancy_check_decision)
-                if "yes" in relavancy_check_decision.lower():
-                    retrieved_documents.append(top_image_document)
-                    response_array.append(chat_history_manager.append(customer_id, user_id, "bot", "image", rm.get(f'file_system/{top_image_document.metadata.get("source")}')))
+                        images_array.append(chat_history_manager.append(customer_id, user_id, "bot", "image", rm.get(f'file_system/{top_image_document.metadata.get("source")}')))
 
-    print(retrieved_documents)
-    aggregate_context = LangchainDocumentsMerger().merge_documents_to_string(retrieved_documents)
-    # general_response = GeneralQueryAnsweringAgent().answer(aggregate_of_general_queries)
-    specific_response = QueryAnsweringAgent().answer(query, aggregate_context)
+        print(retrieved_documents)
+        aggregate_context = LangchainDocumentsMerger().merge_documents_to_string(retrieved_documents)
+        specific_response = QueryAnsweringAgent().answer(query, aggregate_context)
 
-    chat_history_manager.append(customer_id, user_id, "user", "text", query)
-    # response_array.append(chat_history_manager.append(customer_id, user_id, "bot", "text", general_response))
-    response_array.append(chat_history_manager.append(customer_id, user_id, "bot", "text", specific_response))
+        chat_history_manager.append(customer_id, user_id, "user", "text", query)
+        text_block = chat_history_manager.append(customer_id, user_id, "bot", "text", specific_response)
 
-    
-    return jsonify({
-            "success":"true",
-            "message":"query evaluated successfully",
-            "response":response_array
+        return jsonify({
+                "result":"true",
+                "message":"success",
+                "response":{
+                    "paragraph":text_block,
+                    "images":images_array
+                }
+            })
+    except Exception as e:
+        print(e)
+        return jsonify({
+            "result":"false",
+            "message":"invalid request"
         })
 
-# @app.route("/chat/history", methods = ["POST"])
-# async def handle_history():
-#     body = request.get_json()
-#     customer_id = body.get("customer_id")
-#     user_id = body.get("user_id")
-#     query = body.get("query")
-#     page_number = body.get("page_number")
-#     page_size = body.get("page_size")
-#     key = f'{customer_id}-{user_id}'
-
-#     chat_context = rm.get(f'file_system/database/services/{customer_id}/{user_id}.json')
-#     chat_history = chat_context["chat_history"]
-#     chat_history_size = chat_context["chat_history_size"]
-
-#     end = chat_history_size - page_number*page_size - 1
-#     start = chat_history_size - page_number*page_size - page_size
-
-#     print(start)
-#     print(end)
-
-#     if start<0:
-#         start = 0
-    
-#     if end < 0:
-#         end = -1
-            
-#     print(start)
-#     print(end)
-#     print(len(chat_history[start:end+1]))
-    
-#     return jsonify({
-#         "success":"true",
-#         "message":"page fetched successfully (0th page refers to the most recent chats)",
-#         "chat_history_page":chat_history[start:end+1]
-#     })
-
-@app.route('/bot/knowledge', methods = ['POST'])
+@app.route('/api/v1/knowledge', methods = ['POST'])
 async def handle_upload():
     try:
-        files = request.files.getlist("files")
+        files = request.files.getlist("artifacts")
         customer_id = request.form.get("customer_id")
-        admin_id = request.form.get("admin_id")
+
+        no_of_files = len(files)
 
         # if knowledge_base folder doesnt exist for a customer, create one
+        # to be handled by module : VectorStoreInterface.py
         knowledge_base_path = f'database/services/{customer_id}/knowledge_base'
         if not os.path.exists(knowledge_base_path):
             os.makedirs(knowledge_base_path)
@@ -244,9 +219,6 @@ async def handle_upload():
             if file.filename.lower().endswith(".pdf"):
                 path = f'database/services/{customer_id}/knowledge_base/{artifact_id}.pdf'
                 file.save(path)
-                # image_descriptions_task =  asyncio.create_task(asyncio.to_thread(KnowledgeArtifactLoader().load_images_from_pdf(path)))
-                # pages_task = asyncio.create_task(asyncio.to_thread(KnowledgeArtifactLoader().load_pdf(path)))
-                # image_descriptions, pages = await asyncio.gather(image_descriptions_task, pages_task)
                 pages = KnowledgeArtifactLoader().load_pdf(path, artifact_id)
                 summary = SummarizingAgent().summarize_from_documents(pages)
                 knowledge_summaries.append({
@@ -299,63 +271,62 @@ async def handle_upload():
         rm.set(f'file_system/database/services/{customer_id}/config.json', customer_config)
 
         return jsonify({
-                "success":"true",
-                "message":"files uploaded successfully",
+                "result":"true",
+                "message":f"{no_of_files} artifacts uploaded",
                 "uploaded_artifacts":uploaded_artifacts
-            })
+            }),200
     except Exception as e:
         return jsonify({
             "result":"false",
             "message":str(e)
-        })
+        }),400
 
-@app.route("/<customer_id>/bot/knowledge", methods=["DELETE"])
-async def handle_delete(customer_id):
-    print("DELETING PROVIDED KNOWLEDGE")
-    
-    body = request.get_json()
-    artifact_ids = body.get("artifacts")
-    artifact_ids = set(artifact_ids)
+@app.route("/api/v1/knowledge", methods=["DELETE"])
+async def handle_delete():
+    try:
+        print("DELETING ARTIFACTS")
+        
+        body = request.get_json()
+        customer_id = body.get("customer_id")
+        artifact_ids = body.get("artifacts")
+        no_of_artifacts = len(artifact_ids)
+        artifact_ids = set(artifact_ids)
 
-    customer_config = rm.get(f'file_system/database/services/{customer_id}/config.json')
-    knowledge_summaries = customer_config.get("knowledge_summaries")
+        vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
+        image_vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/image_vector_store')
 
-    customer_config["knowledge_summaries"] = [ks for ks in knowledge_summaries if ks["artifact_id"] not in artifact_ids]
+        vector_store_ids_to_be_deleted = [
+        key for key, value in vector_store.docstore._dict.items()
+        if value.metadata.get("artifact_id") in artifact_ids
+        ]
 
-    rm.set(f'file_system/database/services/{customer_id}/config.json', customer_config)
+        # Extracting IDs from image vector store
+        image_vector_store_ids_to_be_deleted = [
+            key for key, value in image_vector_store.docstore._dict.items()
+            if value.metadata.get("artifact_id") in artifact_ids
+        ]
 
-    vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
-    
-    dictionary = vector_store.docstore._dict
-    pprint(dictionary)
-    print(len(dictionary))
+        # soon to be handled by module: VectorStoreInterface.py via ResourceManager.py
+        vector_store.delete(ids = vector_store_ids_to_be_deleted)
+        image_vector_store.delete(ids = image_vector_store_ids_to_be_deleted)
 
-    # for key, value in dictionary.items():
-    #     value.metadata["test_value"] = 10
+        LangchainDocumentChunksEmbedder().set_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store', vector_store)
 
-    vector_store_ids_to_be_deleted = []
-    for key, value in dictionary.items():
-        if value.metadata.get("artifact_id") in artifact_ids:
-            vector_store_ids_to_be_deleted.append(key)
+        customer_config = rm.get(f'file_system/database/services/{customer_id}/config.json')
+        knowledge_summaries = customer_config.get("knowledge_summaries")
+        customer_config["knowledge_summaries"] = [ks for ks in knowledge_summaries if ks["artifact_id"] not in artifact_ids]
+        rm.set(f'file_system/database/services/{customer_id}/config.json', customer_config)
 
-    print(vector_store.delete(ids = vector_store_ids_to_be_deleted))
-
-    LangchainDocumentChunksEmbedder().set_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store', vector_store)
-    
-    await asyncio.sleep(10)
-
-    vector_store = None
-    dictionary = None
-    vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
-
-    dictionary = vector_store.docstore._dict
-    pprint(dictionary)
-    print(len(dictionary))
-
-    return jsonify({
-        "success":"true",
-        "message": "Knowledge deleted successfully"
-    })
+        return jsonify({
+            "result":"true",
+            "message": f"{no_of_artifacts} artifacts deleted"
+        }),200
+    except Exception as e:
+        print(str(e))
+        return jsonify({
+            "result":"false",
+            "message":"invalid request"
+        }),400
 
 if __name__ == '__main__':
     app.run(debug=True)

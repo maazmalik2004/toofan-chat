@@ -160,6 +160,7 @@ class LangchainDocumentsMerger:
 #     def set_vector_store(self, path, vector_store):
 #         vector_store.save_local(path)
 
+# soon to be handled by a seprate interface via resource manager
 class LangchainDocumentChunksEmbedder:
     def __init__(self, model="models/embedding-001"):
         self.embedder = GoogleGenerativeAIEmbeddings(model=model)
