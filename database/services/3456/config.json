@@ -1,0 +1,46 @@
+{
+    "customer_id": "1234",
+    "customer_name": "swigato",
+    "moderators": [
+        {
+            "moderator_id": "1",
+            "moderator_name": "John Doe",
+            "allowed": true
+        },
+        {
+            "moderator_id": "2",
+            "moderator_name": "Jane Smith",
+            "allowed": false
+        }
+    ],
+    "active_users": [
+        1234,
+        2345
+    ],
+    "allowed": true,
+    "allow_web_access": true,
+    "personality_prompt": "Please ensure the responses are polite and concise.",
+    "custom_welcome_message": "Welcome to Example Service, how can I assist you today?",
+    "allow_multimodal_for_images": true,
+    "knowledge_summaries": [
+        {
+            "artifact_id": "dc07c8f0-e302-45b3-a6f0-443ac5fac748",
+            "artifact_summary": "This system describes a scalable, multimodal chatbot platform designed for customer service.  Core features include knowledge base management (supporting various document types),  customer-specific interaction tracking, and flexible configuration options.  The platform demonstrates potential for integration with multiple services, as exemplified by its use with both Zomato and Jio.\n"
+        },
+        {
+            "artifact_id": "7114141c-526a-43da-9767-341d857ac409",
+            "artifact_summary": "This documentation describes a RESTful API for a multimodal chatbot integrated with Zomato, potentially extensible to other services like Jio.  The API allows for chatbot configuration, management of a knowledge base (including text, images, and PDFs), and handling of text and image-based customer queries.  The system's design suggests a flexible architecture capable of supporting various data types and integrations beyond its core Zomato functionality.\n"
+        },
+        {
+            "artifact_id": "8d8910c6-a719-432a-97a0-c707547e6536",
+            "artifact_summary": "This documentation describes a versatile chatbot system for managing and deploying multi-company, multimodal chatbots.  Key features include configurable bot setup and knowledge base management (including uploading and deleting various media types), robust query handling with structured success/error reporting, and the ability to handle both text and image-based interactions across multiple platforms.\n"
+        },
+        {
+            "artifact_id": "ab0b7e8f-6678-445e-afbb-67cd720174be",
+            "artifact_summary": "The provided texts consistently highlight several overarching themes within Zomato's internal policies and codes of conduct.  These can be consolidated into the following main categories:\n\n**1. Ethical Conduct and Compliance:** This is the most pervasive theme, encompassing adherence to laws (including anti-bribery, anti-corruption, AML/ATF, antitrust), internal policies, and a general commitment to ethical business practices. This includes fair dealing with all stakeholders (customers, competitors, vendors), responsible use of company assets, and maintaining financial integrity and transparency.\n\n**2.  Whistleblowing and Accountability:**  Robust mechanisms for reporting violations and concerns are consistently emphasized, alongside strong protections for whistleblowers and clear consequences for non-compliance. This includes investigations, disciplinary actions (up to termination), and a commitment to preventing retaliation.\n\n**3.  Information Security and Confidentiality:**  Protecting sensitive company information, including intellectual property, financial data, and employee information, is a recurring priority. This involves strict controls on access, responsible use of company systems, and prevention of insider trading.\n\n**4.  Employee Well-being and Workplace Culture:**  Several documents address creating a positive and safe work environment, including commitments to workplace health and safety, diversity and inclusion, zero tolerance for harassment, and promoting employee well-being.\n\n**5.  Conflict of Interest Management:**  Several sections address potential conflicts of interest, particularly emphasizing disclosure requirements for personal interests that could influence professional decisions or create an unfair advantage.\n\n\nThese five categories represent the core values and principles underpinning Zomato's internal governance structure, as reflected across the various documents summarized.\n"
+        }
+    ],
+    "use_query_filtering": false,
+    "key1": "value1",
+    "key2": "value2"
+}

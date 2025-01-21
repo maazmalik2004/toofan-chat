@@ -130,17 +130,52 @@ class LangchainDocumentsMerger:
         )]
         return document
     
+# class LangchainDocumentChunksEmbedder:
+#     def __init__(self, model = "models/embedding-001"):
+#         self.embedder = GoogleGenerativeAIEmbeddings(model=model)
+
+#     def embed(self, vector_store_path, documents):
+#         if not os.path.exists(vector_store_path):
+#             vector_store = FAISS.from_documents(documents, embedding=self.embedder)
+#             vector_store.save_local(vector_store_path)
+        
+#         vector_store = FAISS.load_local(
+#             vector_store_path, embeddings = self.embedder, allow_dangerous_deserialization=True
+#         )
+#         uuids = [str(uuid4()) for _ in range(len(documents))]
+#         vector_store.add_documents(documents=documents, ids=uuids)
+#         vector_store.save_local(vector_store_path)
+#         return vector_store
+    
+#     def get_vector_store(self, vector_store_path):
+#         if not os.path.exists(vector_store_path):
+#             vector_store = FAISS.from_documents([], embedding=self.embedder)
+#             vector_store.save_local(vector_store_path)
+#         else:
+#             vector_store = FAISS.load_local(
+#                 vector_store_path, embeddings=self.embedder, allow_dangerous_deserialization=True
+#             )
+#         return vector_store
+    
+#     def set_vector_store(self, path, vector_store):
+#         vector_store.save_local(path)
+
 class LangchainDocumentChunksEmbedder:
-    def __init__(self, model = "models/embedding-001"):
+    def __init__(self, model="models/embedding-001"):
         self.embedder = GoogleGenerativeAIEmbeddings(model=model)
 
     def embed(self, vector_store_path, documents):
+        # Check if the directory exists, create it if it doesn't
+        directory = os.path.dirname(vector_store_path)
+        if not os.path.exists(directory):
+            os.makedirs(directory)  # Create the directory path if it doesn't exist
+
         if not os.path.exists(vector_store_path):
             vector_store = FAISS.from_documents(documents, embedding=self.embedder)
             vector_store.save_local(vector_store_path)
         
         vector_store = FAISS.load_local(
-            vector_store_path, embeddings = self.embedder, allow_dangerous_deserialization=True
+            vector_store_path, embeddings=self.embedder, allow_dangerous_deserialization=True
         )
         uuids = [str(uuid4()) for _ in range(len(documents))]
         vector_store.add_documents(documents=documents, ids=uuids)
@@ -148,6 +183,11 @@ class LangchainDocumentChunksEmbedder:
         return vector_store
     
     def get_vector_store(self, vector_store_path):
+        # Check if the directory exists, create it if it doesn't
+        directory = os.path.dirname(vector_store_path)
+        if not os.path.exists(directory):
+            os.makedirs(directory)  # Create the directory path if it doesn't exist
+
         if not os.path.exists(vector_store_path):
             vector_store = FAISS.from_documents([], embedding=self.embedder)
             vector_store.save_local(vector_store_path)
@@ -158,6 +198,10 @@ class LangchainDocumentChunksEmbedder:
         return vector_store
     
     def set_vector_store(self, path, vector_store):
+        # Ensure the directory exists before saving
+        directory = os.path.dirname(path)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         vector_store.save_local(path)
     
 class LangchainDocumentChunksRetriever:

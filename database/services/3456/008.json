@@ -1,0 +1,21 @@
+{
+    "chat_cache_size": 10,
+    "chat_history_window_limit": 10,
+    "chat_history": [
+        {
+            "chat_id": "50758bd5-eb98-4dff-a81b-8c08de1e6575",
+            "from": "bot",
+            "timestamp": "2025-01-18 23:45:36.133391",
+            "type": "text",
+            "content": "Welcome to Example Service, how can I assist you today?"
+        },
+        {
+            "chat_id": "69206fb5-4fae-44aa-8f80-320a1f04be6b",
+            "from": "bot",
+            "timestamp": "2025-01-18 23:46:52.951685",
+            "type": "text",
+            "content": "Welcome to Example Service, how can I assist you today?"
+        }
+    ],
+    "chat_history_size": 2
+}
