@@ -1,5 +1,5 @@
 from ResourceManager import ResourceManager
-from ChatHistoryInterface import ChatHistoryInterface
+from UserContextInterface import UserContextInterface
 
 rm = ResourceManager(location_interface_map = {
              "chat_history": ChatHistoryInterface()
@@ -14,4 +14,4 @@ rm.set("chat_history/2",{
 })
 
 print(rm.get("chat_history/1"))
-print(rm.get("chat_history/3"))
+print(rm.get("chat_history/4"))

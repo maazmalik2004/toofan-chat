@@ -190,7 +190,10 @@ class LangchainDocumentChunksEmbedder:
             os.makedirs(directory)  # Create the directory path if it doesn't exist
 
         if not os.path.exists(vector_store_path):
-            vector_store = FAISS.from_documents([], embedding=self.embedder)
+            vector_store = FAISS.from_documents([Document(
+                page_content="default",
+                metadata={"source": "default", "artifact_id":"default"}
+            )], embedding=self.embedder)
             vector_store.save_local(vector_store_path)
         else:
             vector_store = FAISS.load_local(

@@ -14,26 +14,30 @@ class ChatHistoryManager:
             "type": type,
             "content": content
         }
-
+        
         config = self.resource_manager.get("file_system/database/environment/config.json")
+        user_context = self.resource_manager.get(f"user_context/{customer_id}{user_id}")
 
-        if "chat_history" not in config:
-            config["chat_history"] = []
-            config["chat_history_size"] = 0
+        if not user_context:
+            raise Exception("User has not connected yet. chat history unavailable. please use the /connect endpoint to do the same")
+        
+        if not user_context.get("chat_history"):
+            user_context["chat_history_size"] = 0
+            user_context["chat_history"]= []
+        
+        if not user_context.get("chat_history_size"):
+            user_context["chat_history_size"] = len(user_context.get("chat_history"))
+        
+        if user_context["chat_history_size"] + 1 > config.get("chat_history_window_limit"):
+            print('aalu')
+            user_context["chat_history"].pop(0)  # Remove the oldest chat
+            print("gobi")
+            user_context["chat_history_size"] -= 1
+        
+        print('baian')
+        user_context["chat_history"].append(chat_record)
+        user_context["chat_history_size"] += 1
 
-        if config["chat_history_size"] + 1 > config.get("chat_history_window_limit", 100):
-            config["chat_history"].pop(0)  # Remove the oldest chat
-            config["chat_history_size"] -= 1
-
-        config["chat_history"].append(chat_record)
-        config["chat_history_size"] += 1
-
-        # (Optional) Summarize chat history (uncomment and fix if needed)
-        # config["chat_history_summary"] = SummarizingAgent().summarize_query(
-        #     f"{config['chat_history_summary']}\n{content}"
-        # )
-
-        # Save the updated context back to the resource manager
-        self.resource_manager.set(f'file_system/database/services/{customer_id}/{user_id}.json', config)
+        self.resource_manager.set(f'user_context/{customer_id}{user_id}', user_context)
 
         return chat_record

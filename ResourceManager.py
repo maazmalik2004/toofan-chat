@@ -9,7 +9,6 @@ class ResourceManager:
     def get(self, path):
         path = Path(path)
         effective_path = self.get_effective_path(path)
-        print(effective_path)
 
         # Check if the value is in cache
         if effective_path in self.cache:
@@ -26,7 +25,6 @@ class ResourceManager:
     def set(self, path, value):
         path = Path(path)
         effective_path = self.get_effective_path(path)
-        print(f"meow meow {effective_path}")
         self.cache[effective_path] = value
         interface = self.get_interface(path)
         interface.write(effective_path, value)

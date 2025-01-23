@@ -10,7 +10,7 @@ import mimetypes
 import filetype
 
 from FileSystemInterface import FileSystemInterface
-from ChatHistoryInterface import ChatHistoryInterface
+from UserContextInterface import UserContextInterface
 from ResourceManager import ResourceManager
 from ChatHistoryManager import   ChatHistoryManager
 from DefaultConfigManager import DefaultConfigManager
@@ -25,21 +25,21 @@ app = Flask(__name__)
 
 rm = ResourceManager(location_interface_map = {
              "file_system": FileSystemInterface(),
-             "chat_history": ChatHistoryInterface()
+             "user_context": UserContextInterface(filename="database/environment/user_contexts.json")
          })
 chat_history_manager = ChatHistoryManager(resource_manager=rm)
 default_config_manager = DefaultConfigManager(resource_manager=rm)
 
-rm.set("chat_history/1",{
-    "some data":"some object"
-})
+# rm.set("chat_history/1",{
+#     "some data":"some object"
+# })
 
-rm.set("chat_history/2",{
-    "some other data":"some other object"
-})
+# rm.set("chat_history/2",{
+#     "some other data":"some other object"
+# })
 
-print(rm.get("chat_history/1"))
-print(rm.get("chat_history/2"))
+# print(rm.get("chat_history/1"))
+# print(rm.get("chat_history/2"))
 
 @app.route('/api/v1/health', methods=["GET"])
 def handle_health_check():
@@ -53,14 +53,19 @@ async def handle_connect():
         body = request.get_json()
         customer_id = body.get("customer_id")
         user_id = body.get("user_id")
-        context = body.get("context")
+        user_context = body.get("context")
+
+        if not user_context:
+            raise Exception("user context does not exist in the request.")
+        
+        if not user_context.get("chat_history"):
+            user_context["chat_history"] = []
+
+        rm.set(f"user_context/{customer_id}{user_id}", user_context)
         
         config = rm.get(f'file_system/database/services/{customer_id}/config.json')
-
         if not config:
             raise Exception("customer config not found. maybe customer doesnt exist. use /config endpoint to create customer config")
-        
-        rm.set(f'file_system/database/services/{customer_id}/{user_id}.json', context)
         
         welcome_chat_context = chat_history_manager.append(customer_id, user_id, "bot", "text", config["custom_welcome_message"])
         
@@ -71,9 +76,10 @@ async def handle_connect():
             }),200
     
     except Exception as e:
+        print(e)
         return jsonify({
             "result":"false",
-            "message":"invalid request",
+            "message":str(e),
         }),400
 
 @app.route("/api/v1/config", methods = ["PUT"])
@@ -125,6 +131,9 @@ async def handle_query():
         query = body.get("query")
 
         customer_config = rm.get(f'file_system/database/services/{customer_id}/config.json')
+        if not customer_config:
+            raise Exception("customer doesnt exist. configure customer using /config")
+        
         allow_multimodal_for_images = customer_config["allow_multimodal_for_images"]
         use_query_filtering = customer_config["use_query_filtering"]
 
@@ -134,7 +143,9 @@ async def handle_query():
         relavancy_check_decision = None
         
         print("GETTING VECTOR STORE...")
+        print("aalu")
         vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
+        print("gobi")
         if allow_multimodal_for_images:     
             image_vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/image_vector_store')
 
@@ -204,7 +215,7 @@ async def handle_query():
         print(e)
         return jsonify({
             "result":"false",
-            "message":"invalid request"
+            "message":str(e)
         })
 
 @app.route('/api/v1/knowledge', methods = ['POST'])

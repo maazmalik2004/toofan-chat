@@ -1,0 +1,14 @@
+{
+    "customer_id": "0002",
+    "customer_name": "swiggy",
+    "moderators": [],
+    "active_users": [],
+    "allowed": true,
+    "allow_web_access": false,
+    "personality_prompt": "",
+    "custom_welcome_message": "welcome!, how may I assist you today.",
+    "allow_multimodal_for_images": "true",
+    "knowledge_summaries": [],
+    "use_query_filtering": false,
+    "key": "value"
+}

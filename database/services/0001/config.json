@@ -1,0 +1,31 @@
+{
+    "customer_id": "0001",
+    "customer_name": "swiggy",
+    "moderators": [],
+    "active_users": [],
+    "allowed": true,
+    "allow_web_access": false,
+    "personality_prompt": "",
+    "custom_welcome_message": "welcome!, how may I assist you today.",
+    "allow_multimodal_for_images": "true",
+    "knowledge_summaries": [
+        {
+            "artifact_id": "595623ac-f7a0-4b44-aa06-1a4098333be5",
+            "artifact_summary": "A three-dimensional, yellow cursive rendering of the word \"Something\" is centrally positioned against a solid blue background.\n"
+        },
+        {
+            "artifact_id": "8fe5f27c-3371-4449-a562-9139f7f6dac0",
+            "artifact_summary": "The provided texts reveal a comprehensive code of conduct and ethics program at Zomato, covering several key themes:\n\n**1. Ethical Business Conduct & Compliance:** This overarching theme encompasses adherence to laws and regulations (including anti-bribery/corruption, anti-money laundering, and anti-terrorist financing), fair competition, responsible corporate behavior, and maintaining Zomato's reputation.  This includes robust whistleblowing mechanisms and protection for reporters.\n\n**2. Employee Conduct & Responsibility:**  This includes detailed expectations for employee behavior, both on and off the job, covering areas such as conflict of interest, responsible use of company assets,  political neutrality,  and adherence to workplace safety and health standards.  It emphasizes employee responsibility for understanding and upholding the code, with clear consequences for violations.\n\n**3. Data Security & Confidentiality:**  Protecting confidential company information, including preventing insider trading and unauthorized disclosure of sensitive data, is a major priority.  This includes secure handling of financial information,  and appropriate use of information technology systems.\n\n**4. Workplace Culture & Well-being:** Zomato demonstrates a commitment to fostering a positive and inclusive workplace, free from harassment and discrimination, promoting diversity and inclusion, and prioritizing employee well-being and safety.  This includes addressing issues like workplace wellness, substance abuse, and responsible labor practices.\n\n**5. Governance & Accountability:**  The code reflects a strong emphasis on corporate governance, with clear reporting structures, internal investigation processes, and accountability for both employees and management.  This includes provisions for waivers and amendments, requiring CEO approval, and emphasizing the importance of good faith reporting.\n"
+        },
+        {
+            "artifact_id": "76c3278f-823b-442a-8830-9338a6ee1562",
+            "artifact_summary": "A vibrant yellow, cursive \"SOMETHING,\" rendered in 3D and centrally positioned against a blue background, is the sole focus of a visually striking and simple image.  The design emphasizes strong color contrast and clean typography.\n"
+        },
+        {
+            "artifact_id": "03c04bde-ff2c-4976-9666-7028d5cbeda1",
+            "artifact_summary": "The provided texts represent various sections of a comprehensive Zomato Code of Conduct and internal policy manual.  The overarching themes consistently emphasize **ethical conduct, compliance, and responsible behavior** within the organization and in interactions with external parties.  This broad theme is broken down into several key areas:\n\n* **Ethical Business Practices:** This includes adherence to laws and regulations (anti-bribery, anti-money laundering, antitrust), avoidance of conflicts of interest, fair dealing with third parties, and maintaining a culture of ethical decision-making at all levels.  Emphasis is placed on preventing bribery, corruption, and other illegal activities.\n\n* **Employee Responsibility and Accountability:**  Employees are expected to understand and adhere to the Code of Conduct, proactively report violations, and act responsibly in handling confidential information and company assets.  Managerial accountability is also stressed, with managers responsible for fostering an ethical work environment and supporting reporting mechanisms.  Consequences for non-compliance are clearly defined, ranging from disciplinary action to termination.\n\n* **Governance and Compliance:** This encompasses robust internal controls, reporting procedures, and investigation processes for addressing potential misconduct.  Transparency and accountability are key, with clearly defined channels for reporting violations and protections for whistleblowers.\n\n* **Workplace Well-being and Social Responsibility:**  The Code demonstrates a commitment to creating a positive and inclusive work environment, encompassing employee well-being, workplace safety, diversity and inclusion initiatives, and ethical labor practices (prohibition of child labor, forced labor, etc.).\n\n* **Data Security and Confidentiality:**  Protecting sensitive information (financial data, intellectual property, etc.) is a significant concern, with specific guidelines on handling confidential information and preventing insider trading.\n\nIn summary, Zomato's internal policies prioritize ethical conduct, compliance with relevant laws and regulations, employee responsibility, and a commitment to creating a safe, inclusive, and productive work environment.  The emphasis is on establishing clear expectations, providing support and guidance, and ensuring accountability for violations.\n"
+        }
+    ],
+    "use_query_filtering": false,
+    "key": "value"
+}
