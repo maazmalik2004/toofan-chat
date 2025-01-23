@@ -30,6 +30,17 @@ rm = ResourceManager(location_interface_map = {
 chat_history_manager = ChatHistoryManager(resource_manager=rm)
 default_config_manager = DefaultConfigManager(resource_manager=rm)
 
+rm.set("chat_history/1",{
+    "some data":"some object"
+})
+
+rm.set("chat_history/2",{
+    "some other data":"some other object"
+})
+
+print(rm.get("chat_history/1"))
+print(rm.get("chat_history/2"))
+
 @app.route('/api/v1/health', methods=["GET"])
 def handle_health_check():
     return jsonify({

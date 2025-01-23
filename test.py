@@ -1,23 +1,17 @@
-data = {
-    "knowledge_summaries": [
-        {
-            "artifact_id": "235568a6-32ef-47f7-8d14-a2573d34133b",
-            "artifact_summary": "The provided texts consistently highlight several overarching themes..."
-        },
-        {
-            "artifact_id": "235568a6-32ef-47f7-8d14-a2573d34133b",
-            "artifact_summary": "Another summary for the same artifact_id"
-        },
-        {
-            "artifact_id": "random-id-1234",
-            "artifact_summary": "This record should remain unaffected."
-        }
-    ]
-}
+from ResourceManager import ResourceManager
+from ChatHistoryInterface import ChatHistoryInterface
 
-artifact_ids_to_remove = {"235568a6-32ef-47f7-8d14-a2573d34133b", "another-id-1234"}
+rm = ResourceManager(location_interface_map = {
+             "chat_history": ChatHistoryInterface()
+         })
 
-# Iteratively remove records with any artifact_id in the removal set
-data["knowledge_summaries"] = [record for record in data["knowledge_summaries"] if record["artifact_id"] not in artifact_ids_to_remove]
+rm.set("chat_history/1",{
+    "some data":"some object"
+})
 
-print(data)
+rm.set("chat_history/2",{
+    "some other data":"some other object"
+})
+
+print(rm.get("chat_history/1"))
+print(rm.get("chat_history/3"))

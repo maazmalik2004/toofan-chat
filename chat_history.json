@@ -1,1 +1,1 @@
-{"1": {}, "2": {"aalu": "oogabooga"}}
+{"1": {"some data": "some object"}, "2": {"some other data": "some other object"}, "3": {"some third data i added directly to file": "its value"}}
