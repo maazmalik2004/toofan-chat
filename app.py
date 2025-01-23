@@ -5,8 +5,12 @@ from uuid import uuid4
 from datetime import datetime
 import json
 from pprint import pprint
+import requests
+import mimetypes
+import filetype
 
 from FileSystemInterface import FileSystemInterface
+from ChatHistoryInterface import ChatHistoryInterface
 from ResourceManager import ResourceManager
 from ChatHistoryManager import   ChatHistoryManager
 from DefaultConfigManager import DefaultConfigManager
@@ -20,11 +24,11 @@ load_dotenv()
 app = Flask(__name__)
 
 rm = ResourceManager(location_interface_map = {
-             "file_system": FileSystemInterface()
+             "file_system": FileSystemInterface(),
+             "chat_history": ChatHistoryInterface()
          })
 chat_history_manager = ChatHistoryManager(resource_manager=rm)
 default_config_manager = DefaultConfigManager(resource_manager=rm)
-
 
 @app.route('/api/v1/health', methods=["GET"])
 def handle_health_check():
@@ -195,13 +199,12 @@ async def handle_query():
 @app.route('/api/v1/knowledge', methods = ['POST'])
 async def handle_upload():
     try:
-        files = request.files.getlist("artifacts")
-        customer_id = request.form.get("customer_id")
+        body = request.get_json()
+        files = body.get("artifacts")
+        customer_id = body.get("customer_id")
 
-        no_of_files = len(files)
+        upload_count = 0
 
-        # if knowledge_base folder doesnt exist for a customer, create one
-        # to be handled by module : VectorStoreInterface.py
         knowledge_base_path = f'database/services/{customer_id}/knowledge_base'
         if not os.path.exists(knowledge_base_path):
             os.makedirs(knowledge_base_path)
@@ -215,10 +218,23 @@ async def handle_upload():
 
         for file in files:
             artifact_id = str(uuid4())
-            
-            if file.filename.lower().endswith(".pdf"):
-                path = f'database/services/{customer_id}/knowledge_base/{artifact_id}.pdf'
-                file.save(path)
+
+            # folder_path = f'database/services/{customer_id}/knowledge_base'
+            # download file
+            download_response = requests.get(file, stream = True, allow_redirects=True)
+            content_type = str(download_response.headers.get("Content-Type"))
+            extension = mimetypes.guess_extension(content_type)
+            print(content_type)
+            print(extension)
+            download_path = f'database/services/{customer_id}/knowledge_base/{artifact_id}{extension}'
+            if download_response.status_code == 200:
+                with open(download_path, "wb") as tmp_file:
+                    for chunk in download_response.iter_content(chunk_size=8192):
+                        tmp_file.write(chunk)
+            # download complete
+  
+            if extension and extension.lower() == ".pdf":
+                path = download_path
                 pages = KnowledgeArtifactLoader().load_pdf(path, artifact_id)
                 summary = SummarizingAgent().summarize_from_documents(pages)
                 knowledge_summaries.append({
@@ -230,13 +246,13 @@ async def handle_upload():
                 vector_store = LangchainDocumentChunksEmbedder().embed(f'database/services/{customer_id}/knowledge_base/vector_store',chunks)
                 image_vector_store = LangchainDocumentChunksEmbedder().embed(f'database/services/{customer_id}/knowledge_base/image_vector_store',image_descriptions)
                 uploaded_artifacts.append({
-                    "artifact_name":file.filename,
+                    "artifact_url":file,
                     "artifact_id":artifact_id
                 })
+                upload_count = upload_count + 1
 
-            if file.filename.lower().endswith(".txt"):
-                path = f'database/services/{customer_id}/knowledge_base/{artifact_id}.txt'
-                file.save(path)
+            if extension and extension.lower() == ".txt":
+                path = download_path
                 pages = KnowledgeArtifactLoader().load_text(path, artifact_id)
                 summary = SummarizingAgent().summarize_from_documents(pages)
                 knowledge_summaries.append({
@@ -247,14 +263,13 @@ async def handle_upload():
                 vector_store = LangchainDocumentChunksEmbedder().embed(f'database/services/{customer_id}/knowledge_base/vector_store',chunks)
                 print(vector_store.index.ntotal)
                 uploaded_artifacts.append({
-                    "artifact_name":file.filename,
+                    "artifact_url":file,
                     "artifact_id":artifact_id
                 })
+                upload_count = upload_count + 1
 
-            if file.filename.lower().endswith((".png", ".jpg", ".jpeg")):
-                fname, fextension = os.path.splitext(file.filename)
-                path = f'database/services/{customer_id}/knowledge_base/{str(uuid4())}{fextension.lower()}'
-                file.save(path)
+            if extension and extension.lower() in (".png", ".jpg", ".jpeg"):
+                path = download_path
                 image_descriptions = KnowledgeArtifactLoader().load_image(path, artifact_id)
                 summary = SummarizingAgent().summarize_from_documents(image_descriptions)
                 knowledge_summaries.append({
@@ -264,15 +279,16 @@ async def handle_upload():
                 vector_store = LangchainDocumentChunksEmbedder().embed(f'database/services/{customer_id}/knowledge_base/image_vector_store',image_descriptions)
                 print(vector_store.index.ntotal)
                 uploaded_artifacts.append({
-                    "artifact_name":file.filename,
+                    "artifact_url":file,
                     "artifact_id":artifact_id
                 })
+                upload_count = upload_count + 1
 
         rm.set(f'file_system/database/services/{customer_id}/config.json', customer_config)
 
         return jsonify({
                 "result":"true",
-                "message":f"{no_of_files} artifacts uploaded",
+                "message":f"{upload_count} artifacts uploaded",
                 "uploaded_artifacts":uploaded_artifacts
             }),200
     except Exception as e:
