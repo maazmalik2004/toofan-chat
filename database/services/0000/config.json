@@ -1,13 +1,13 @@
 {
     "customer_id": "0000",
-    "customer_name": "zomato",
+    "customer_name": "swiggy",
     "moderators": [],
     "active_users": [],
     "allowed": true,
     "allow_web_access": false,
     "personality_prompt": "",
     "custom_welcome_message": "welcome!, how may I assist you today.",
-    "allow_multimodal_for_images": "false",
+    "allow_multimodal_for_images": false,
     "knowledge_summaries": [
         {
             "artifact_id": "0cf94a04-c54d-45ee-9c18-993c7b16e948",
@@ -32,6 +32,26 @@
         {
             "artifact_id": "1d2d192f-2429-4a43-88e0-2ff66de0a5e3",
             "artifact_summary": "Based on the provided summaries of various Zomato documents, the overarching themes consistently emphasized are:\n\n**1. Ethical Conduct and Compliance:** This encompasses a broad range of ethical business practices, including adherence to laws and regulations (anti-bribery, anti-corruption, anti-money laundering, antitrust), fair competition, responsible financial reporting, and maintaining a high standard of ethical behavior in all interactions (internal and external).  This theme is the foundation upon which all other themes are built.\n\n**2. Employee Responsibility and Accountability:**  Zomato stresses the importance of employee understanding, adherence to, and promotion of its code of conduct.  This includes clear expectations of behavior, reporting mechanisms for violations, and consequences for non-compliance, ranging from disciplinary action to termination.  Managerial responsibility in fostering an ethical work environment is also highlighted.\n\n**3.  Whistleblowing and Protection:**  Robust mechanisms for reporting ethical concerns and violations are emphasized, along with strong protections for whistleblowers against retaliation.  The importance of good faith reporting is also stressed.\n\n**4.  Data Security and Confidentiality:**  Protecting sensitive company information, both internal and external, is a key concern. This includes preventing insider trading, maintaining confidentiality with third parties, and proper handling of confidential information.\n\n**5. Workplace Culture and Well-being:**  Zomato demonstrates a commitment to fostering a positive and inclusive work environment, addressing issues such as workplace harassment prevention, diversity and inclusion, workplace health and safety, and employee well-being.\n\n\nThese five themes represent the core values and operational principles reflected across the various Zomato documents.  While specific sub-themes like conflict of interest, responsible use of company assets, and political neutrality are important, they fall under the broader umbrella of these five overarching principles.\n"
+        },
+        {
+            "artifact_id": "id1",
+            "artifact_summary": "3D-rendered cursive typography with TextStudio branding.\n"
+        },
+        {
+            "artifact_id": "id2",
+            "artifact_summary": "Zomato's internal documents reveal a comprehensive code of conduct and compliance program centered around several key themes:\n\n**1. Ethical Conduct and Compliance:** This overarching theme permeates all documents, encompassing ethical business practices, adherence to local and international laws (including anti-bribery, anti-corruption, AML/ATF, and antitrust regulations), fair dealing with stakeholders, and responsible corporate behavior.  This includes robust mechanisms for whistleblowing and reporting violations.\n\n**2.  Data Security and Confidentiality:**  Protecting sensitive company information, including financial data, intellectual property, and employee information, is a major priority, emphasizing restricted access and responsible use of company assets and technology.\n\n**3. Employee Conduct and Responsibility:**  This theme focuses on employee responsibilities, including adherence to the code of conduct, appropriate use of company resources, conflict of interest avoidance, and reporting mechanisms for grievances and misconduct.  It also emphasizes creating a positive and inclusive workplace culture, addressing issues like workplace safety, harassment, and diversity & inclusion.\n\n**4.  Accountability and Transparency:**  The documents stress accountability for actions, with clear consequences for violations, ranging from disciplinary action to termination.  This also extends to financial transparency, accurate record-keeping, and truthful public disclosures.\n\n**5.  Whistleblower Protection:**  Protecting employees who report violations in good faith is a key element, with strong safeguards against retaliation.\n\n\nThese five themes represent the core principles guiding Zomato's internal operations and demonstrate a commitment to ethical conduct, legal compliance, and a responsible corporate culture.\n"
+        },
+        {
+            "artifact_id": "id1",
+            "artifact_summary": "Digital art incorporating 3D text rendering and typography.\n"
+        },
+        {
+            "artifact_id": "id2",
+            "artifact_summary": "The provided texts reveal several overarching themes within Zomato's internal policies and code of conduct.  These can be consolidated into the following categories:\n\n* **Ethical Conduct and Compliance:** This is the most prevalent theme, encompassing adherence to laws (including FCPA, UKBA, PCA, and SEBI regulations), internal policies, and a strong code of ethics.  This includes preventing bribery, corruption, money laundering, and insider trading; maintaining fair competition; and fostering responsible business practices in all interactions, including those with third parties.\n\n* **Confidentiality and Data Security:**  Protecting sensitive information (financial data, intellectual property, personal information, etc.) is a significant concern, emphasizing restricted access and preventing unauthorized disclosure or use.\n\n* **Employee Responsibility and Accountability:**  Employees are held responsible for understanding and adhering to the code of conduct, including ethical decision-making, reporting violations, and using company assets responsibly.  Managers have a specific role in fostering an ethical work environment and escalating issues.  Consequences for non-compliance range from disciplinary action to termination.\n\n* **Whistleblower Protection and Reporting Mechanisms:**  Zomato prioritizes protecting whistleblowers who report violations, emphasizing good faith reporting and prohibiting retaliation.  Multiple channels for reporting ethical concerns and illegal activities are provided.\n\n* **Workplace Culture and Well-being:**  While not always explicitly stated as a separate theme, several documents touch upon creating a respectful and inclusive workplace, free from harassment (sexual, physical, verbal, psychological), discrimination, and substance abuse.  This includes promoting workplace health and safety and upholding human rights in employment practices.\n\n* **Governance and Transparency:**  The documents highlight the importance of transparency in financial reporting, accurate record-keeping, and cooperation with auditors and regulators.  The governance of the code of conduct itself is also addressed, including provisions for amendments and waivers.\n"
+        },
+        {
+            "artifact_id": "id1",
+            "artifact_summary": "3D typography and digital art.\n"
         }
     ],
     "use_query_filtering": false,

@@ -109,7 +109,7 @@ class QueryAnsweringAgent:
             Do not use terms like "based on the following text" or "in the text" or "provided text"
             Respond confidently and directly with authoritative knowledge, using concise, professional language and taking ownership of the response.
             I will tip you $1000 if the user finds the answer helpful.
-            If you are not confident about the answer or the context does not contain the answer, be humble enough to accept you dont know.
+            If you are not confident about the answer or the context does not contain the answer, be humble enough to accept you dont know and start your answer with "IDK", otherwise start your answer with "OK"
             Completely ignore the query, the answer for which does not exist in the context. positively answer those queries whose answer maybe exists                                  
                             
             <Query>{query}</Query>

@@ -56,10 +56,12 @@ async def handle_connect():
         user_context = body.get("context")
 
         if not user_context:
-            raise Exception("user context does not exist in the request.")
+            user_context = {}
         
         if not user_context.get("chat_history"):
             user_context["chat_history"] = []
+
+        print(user_context)
 
         rm.set(f"user_context/{customer_id}{user_id}", user_context)
         
@@ -222,7 +224,7 @@ async def handle_query():
 async def handle_upload():
     try:
         body = request.get_json()
-        files = body.get("artifacts")
+        artifacts = body.get("artifacts")
         customer_id = body.get("customer_id")
 
         upload_count = 0
@@ -238,8 +240,11 @@ async def handle_upload():
         knowledge_summaries = customer_config.get("knowledge_summaries")
         uploaded_artifacts = []
 
-        for file in files:
-            artifact_id = str(uuid4())
+        for artifact in artifacts:
+            artifact_id = artifact.get("artifact_id")
+            file = artifact.get("artifact_url")
+            print(artifact_id)
+            print(file)
 
             # folder_path = f'database/services/{customer_id}/knowledge_base'
             # download file
