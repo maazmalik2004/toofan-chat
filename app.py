@@ -367,4 +367,4 @@ async def handle_delete():
         }),400
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(port=8000, debug=True)
