@@ -87,7 +87,6 @@ print(vector_store)
 #     document_10,
 # ]
 # uuids = [str(uuid4()) for _ in range(len(documents))]
-
 # vector_store.add_documents(documents=documents, ids=uuids)
 
 result = vector_store.similarity_search("The top 10 soccer players in the world right now.",k=2)

@@ -8,6 +8,7 @@ from pprint import pprint
 import requests
 import mimetypes
 import filetype
+import re
 
 from FileSystemInterface import FileSystemInterface
 from UserContextInterface import UserContextInterface
@@ -133,21 +134,26 @@ async def handle_query():
         query = body.get("query")
 
         customer_config = rm.get(f'file_system/database/services/{customer_id}/config.json')
+        print(customer_config)
         if not customer_config:
             raise Exception("customer doesnt exist. configure customer using /config")
         
+        system_config = rm.get(f'file_system/database/environment/config.json')
+        query_response_codes = system_config.get("query_response_codes")
+        default_response_code = system_config.get("default_response_code")
+        print(query_response_codes)
+        print(default_response_code)
+        
         allow_multimodal_for_images = customer_config["allow_multimodal_for_images"]
         use_query_filtering = customer_config["use_query_filtering"]
-
+        
         image_vector_store = None
         image_retriever = None
         top_image_document = None
         relavancy_check_decision = None
         
         print("GETTING VECTOR STORE...")
-        print("aalu")
         vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
-        print("gobi")
         if allow_multimodal_for_images:     
             image_vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/image_vector_store')
 
@@ -202,6 +208,13 @@ async def handle_query():
         aggregate_context = LangchainDocumentsMerger().merge_documents_to_string(retrieved_documents)
         specific_response = QueryAnsweringAgent().answer(query, aggregate_context)
 
+        pattern = r"^(" + "|".join(re.escape(match) for match in query_response_codes) + ")"
+        response_code = default_response_code
+        match = re.match(pattern, specific_response)
+        if match:
+            response_code = match.group(0)
+            specific_response = specific_response[match.end():].strip()
+
         chat_history_manager.append(customer_id, user_id, "user", "text", query)
         text_block = chat_history_manager.append(customer_id, user_id, "bot", "text", specific_response)
 
@@ -211,7 +224,8 @@ async def handle_query():
                 "response":{
                     "paragraph":text_block,
                     "images":images_array
-                }
+                },
+                "response_code":response_code
             })
     except Exception as e:
         print(e)

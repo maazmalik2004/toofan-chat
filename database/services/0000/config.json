@@ -54,6 +54,6 @@
             "artifact_summary": "3D typography and digital art.\n"
         }
     ],
-    "use_query_filtering": false,
+    "use_query_filtering": true,
     "key": "value"
 }
