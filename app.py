@@ -42,13 +42,13 @@ default_config_manager = DefaultConfigManager(resource_manager=rm)
 # print(rm.get("chat_history/1"))
 # print(rm.get("chat_history/2"))
 
-@app.route('/api/v1/health', methods=["GET"])
+@app.route('/chatbot/api/v1/health', methods=["GET"])
 def handle_health_check():
     return jsonify({
         "status":"healthy"
     }),200
 
-@app.route('/api/v1/connect', methods=['POST'])
+@app.route('/chatbot/api/v1/connect', methods=['POST'])
 async def handle_connect():
     try:
         body = request.get_json()
@@ -85,7 +85,7 @@ async def handle_connect():
             "message":str(e),
         }),400
 
-@app.route("/api/v1/config", methods = ["PUT"])
+@app.route("/chatbot/api/v1/config", methods = ["PUT"])
 async def handle_config_update():
     try:
         print("MODIFYING CONFIGURATION")
@@ -125,7 +125,7 @@ async def handle_config_update():
         }),400
 
 
-@app.route('/api/v1/query', methods=['POST'])
+@app.route('/chatbot/api/v1/query', methods=['POST'])
 async def handle_query():
     try:
         body = request.get_json()
@@ -234,7 +234,7 @@ async def handle_query():
             "message":str(e)
         })
 
-@app.route('/api/v1/knowledge', methods = ['POST'])
+@app.route('/chatbot/api/v1/knowledge', methods = ['POST'])
 async def handle_upload():
     try:
         body = request.get_json()
@@ -338,7 +338,7 @@ async def handle_upload():
             "message":str(e)
         }),400
 
-@app.route("/api/v1/knowledge", methods=["DELETE"])
+@app.route("/chatbot/api/v1/knowledge", methods=["DELETE"])
 async def handle_delete():
     try:
         print("DELETING ARTIFACTS")
