@@ -1,0 +1,24 @@
+Agent(Admin) -> POST /presignedurl {coc.pdf} -> ToofanCore
+ToofanCore -> {https://coc-psurl} -> Admin
+
+
+Admin -> PUT coc psurl -> obj store (201CREATED)
+
+Admin -> POST /uploadknowledge {psrul}
+
+TOOFAN presists this knowledge map 
+customerid -> []knowledge {
+		{"cocuuid":{"coc.pdf","psurl1"}},
+		{"filename2-uuid":{"actual-file-name2","psurl2"}}}
+	}
+
+Toofancore -> POST {[] artifacts{{"artifactid", "psurl"},"{"artifactid2", "psurl2"}} BotService
+
+
+
+
+DELETE knowledge
+
+Toofancore -> DELETE /knowledge {artifactid : [] {"cocuuid"}} -> BOTSvc
+Bot -> 203 DELETED -> Toofancore 
+
