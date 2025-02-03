@@ -68,7 +68,9 @@ async def handle_connect():
 
         rm.set(f"user_context/{customer_id}{user_id}", user_context)
         
-        config = rm.get(f'file_system/database/services/{customer_id}/config.json')
+        # config = rm.get(f'file_system/database/services/{customer_id}/config.json')
+        config = rm.get(f'customer_config/{customer_id}')
+
         if not config:
             raise Exception("customer config not found. maybe customer doesnt exist. use /config endpoint to create customer config")
         
@@ -95,20 +97,24 @@ async def handle_config_update():
         customer_id = body.get("customer_id")
         config_updates = body.get("config")
 
-        config = rm.get(f"file_system/database/services/{customer_id}/config.json")
+        print("meow")
+        config = rm.get(f'customer_config/{customer_id}')
+        print("woof")
         config_already_exists = False
 
         if not config:
             # creating config with default value
             config = default_config_manager.get_default_config(customer_id)
-            rm.set(f"file_system/database/services/{customer_id}/config.json", config)
+            print("before setting default config")
+            rm.set(f'customer_config/{customer_id}', config)
+            print("after setting default config")
             config_already_exists = True
 
         # updating config
         for key, value in config_updates.items():
             config[key] = value
         
-        rm.set(f"file_system/database/services/{customer_id}/config.json", config)
+        rm.set(f'customer_config/{customer_id}', config)
 
         if config_already_exists:
             return jsonify({
@@ -121,6 +127,7 @@ async def handle_config_update():
             "message":"config updated",
         }),200
     except Exception as e:
+        print(e)
         return jsonify({
             "result":"false",
             "message":"invalid request",
@@ -135,7 +142,7 @@ async def handle_query():
         user_id = body.get("user_id")
         query = body.get("query")
 
-        customer_config = rm.get(f'file_system/database/services/{customer_id}/config.json')
+        customer_config = rm.get(f'customer_config/{customer_id}')
         print(customer_config)
         if not customer_config:
             raise Exception("customer doesnt exist. configure customer using /config")
@@ -156,9 +163,16 @@ async def handle_query():
         
         print("GETTING VECTOR STORE...")
         vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
+        
+        if vector_store.index.ntotal == 0:
+            raise Exception("knowledge base is empty. you are querying an empty knowledge base !")
+        
         if allow_multimodal_for_images:     
             image_vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/image_vector_store')
 
+        if allow_multimodal_for_images and image_vector_store.index.ntotal == 0:
+            raise Exception("image knowledge base is empty. either disable 'allow_multimodal_for_images' or upload image content to the knowledge base. you are querying an empty image knowldge base")
+        
         print("INITIALIZING RETRIEVER...")
         retriever = LangchainDocumentChunksRetriever(vector_store)
         if allow_multimodal_for_images:  
@@ -249,7 +263,7 @@ async def handle_upload():
         if not os.path.exists(knowledge_base_path):
             os.makedirs(knowledge_base_path)
 
-        customer_config = rm.get(f'file_system/database/services/{customer_id}/config.json')
+        customer_config = rm.get(f'customer_config/{customer_id}')
         if not customer_config:
             raise Exception("customer config not found. maybe customer doesnt exist. use /config endpoint to create customer config")
         
@@ -327,7 +341,7 @@ async def handle_upload():
                 })
                 upload_count = upload_count + 1
 
-        rm.set(f'file_system/database/services/{customer_id}/config.json', customer_config)
+        rm.set(f'customer_config/{customer_id}', customer_config)
 
         return jsonify({
                 "result":"true",
@@ -353,7 +367,7 @@ async def handle_delete():
 
         vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
         image_vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/image_vector_store')
-
+        
         vector_store_ids_to_be_deleted = [
         key for key, value in vector_store.docstore._dict.items()
         if value.metadata.get("artifact_id") in artifact_ids
@@ -366,15 +380,19 @@ async def handle_delete():
         ]
 
         # soon to be handled by module: VectorStoreInterface.py via ResourceManager.py
-        vector_store.delete(ids = vector_store_ids_to_be_deleted)
-        image_vector_store.delete(ids = image_vector_store_ids_to_be_deleted)
+        if not vector_store_ids_to_be_deleted == []:
+            vector_store.delete(ids = vector_store_ids_to_be_deleted)
+            LangchainDocumentChunksEmbedder().set_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store', vector_store)
 
-        LangchainDocumentChunksEmbedder().set_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store', vector_store)
+        if not image_vector_store_ids_to_be_deleted == []:
+            image_vector_store.delete(ids = image_vector_store_ids_to_be_deleted)
+            LangchainDocumentChunksEmbedder().set_vector_store(f'database/services/{customer_id}/knowledge_base/image_vector_store', image_vector_store)
 
-        customer_config = rm.get(f'file_system/database/services/{customer_id}/config.json')
+
+        customer_config = rm.get(f'customer_config/{customer_id}')
         knowledge_summaries = customer_config.get("knowledge_summaries")
         customer_config["knowledge_summaries"] = [ks for ks in knowledge_summaries if ks["artifact_id"] not in artifact_ids]
-        rm.set(f'file_system/database/services/{customer_id}/config.json', customer_config)
+        rm.set(f'customer_config/{customer_id}', customer_config)
 
         return jsonify({
             "result":"true",

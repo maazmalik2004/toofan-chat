@@ -5,23 +5,26 @@ class CustomerConfigInterface():
         self.collection = MongoClient(db_url)["toofan_local"]["customer_configs"]
 
     def read(self, id):
-        # id = str(id)
+        id = str(id)
+        print(f"database read config {id}")
         found_record = self.collection.find_one({
             "customer_id":id
         })
         return found_record
 
     def write(self, id, value):
-        # id = str(id)
-        old_record = self.collection.find_one({
-            "customer_id":id
-        })
-        if old_record:
-            self.collection.replace_one(old_record, value)
-            return True
-        else:
-            self.collection.insert_one(value)
-            return True
+        id = str(id)
+        print(f"database write config {id}")
+        self.collection.replace_one({"customer_id": id}, value, upsert=True)
+        # old_record = self.collection.find_one({
+        #     "customer_id":id
+        # })
+        # if old_record:
+        #     self.collection.replace_one(old_record, value)
+        #     return True
+        # else:
+        #     self.collection.insert_one(value)
+        #     return True
 
 # cli = CustomerConfigInterface(db_url = "mongodb://localhost:27017/")
 
