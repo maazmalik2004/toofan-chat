@@ -12,6 +12,7 @@ import re
 
 from FileSystemInterface import FileSystemInterface
 from UserContextInterface import UserContextInterface
+from CustomerConfigInterface import CustomerConfigInterface
 from ResourceManager import ResourceManager
 from ChatHistoryManager import   ChatHistoryManager
 from DefaultConfigManager import DefaultConfigManager
@@ -26,7 +27,8 @@ app = Flask(__name__)
 
 rm = ResourceManager(location_interface_map = {
              "file_system": FileSystemInterface(),
-             "user_context": UserContextInterface(filename="database/environment/user_contexts.json")
+             "user_context": UserContextInterface(filename="database/environment/user_contexts.json"),
+             "customer_config":CustomerConfigInterface(db_url = "mongodb://localhost:27017/")
          })
 chat_history_manager = ChatHistoryManager(resource_manager=rm)
 default_config_manager = DefaultConfigManager(resource_manager=rm)
