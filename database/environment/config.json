@@ -1,6 +1,7 @@
 {
     "chat_cache_size": 10,
     "chat_history_window_limit": 10,
+    "persist_uploaded_files":true,
     "query_response_codes": ["OK", "IDK"],
     "default_response_code" : "NONE"
 }

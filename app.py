@@ -17,7 +17,7 @@ from ResourceManager import ResourceManager
 from ChatHistoryManager import   ChatHistoryManager
 from DefaultConfigManager import DefaultConfigManager
 
-from rag import KnowledgeArtifactLoader, LangchainDocumentsSplitter,LangchainDocumentsMerger,  LangchainDocumentChunksEmbedder, LangchainDocumentChunksRetriever
+from rag import KnowledgeArtifactLoader, LangchainDocumentsSplitter,LangchainDocumentsMerger, VectorStoreManager
 from agents import QueryPreprocessingAgent, SummarizingAgent, QueryAnsweringAgent, ImageDescriptionRelavancyCheckAgent, WatchmanAgent, GeneralQueryAnsweringAgent
 
 from dotenv import load_dotenv
@@ -32,6 +32,7 @@ rm = ResourceManager(location_interface_map = {
          })
 chat_history_manager = ChatHistoryManager(resource_manager=rm)
 default_config_manager = DefaultConfigManager(resource_manager=rm)
+vsi = VectorStoreManager(db_url = "mongodb://localhost:27017/", db_name = "toofan_local")
 
 # rm.set("chat_history/1",{
 #     "some data":"some object"
@@ -156,27 +157,30 @@ async def handle_query():
         allow_multimodal_for_images = customer_config["allow_multimodal_for_images"]
         use_query_filtering = customer_config["use_query_filtering"]
         
+        vector_store_name = f"{customer_id}_vector_store"
+        image_vector_store_name = f"{customer_id}_image_vector_store"
+        
         image_vector_store = None
-        image_retriever = None
+        # image_retriever = None
         top_image_document = None
         relavancy_check_decision = None
         
-        print("GETTING VECTOR STORE...")
-        vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
+        # print("GETTING VECTOR STORE...")
+        # vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
         
-        if vector_store.index.ntotal == 0:
-            raise Exception("knowledge base is empty. you are querying an empty knowledge base !")
+        # if vector_store.index.ntotal == 0:
+        #     raise Exception("knowledge base is empty. you are querying an empty knowledge base !")
         
-        if allow_multimodal_for_images:     
-            image_vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/image_vector_store')
+        # if allow_multimodal_for_images:     
+        #     image_vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/image_vector_store')
 
-        if allow_multimodal_for_images and image_vector_store.index.ntotal == 0:
-            raise Exception("image knowledge base is empty. either disable 'allow_multimodal_for_images' or upload image content to the knowledge base. you are querying an empty image knowldge base")
+        # if allow_multimodal_for_images and image_vector_store.index.ntotal == 0:
+        #     raise Exception("image knowledge base is empty. either disable 'allow_multimodal_for_images' or upload image content to the knowledge base. you are querying an empty image knowldge base")
         
-        print("INITIALIZING RETRIEVER...")
-        retriever = LangchainDocumentChunksRetriever(vector_store)
-        if allow_multimodal_for_images:  
-            image_retriever = LangchainDocumentChunksRetriever(image_vector_store)
+        # print("INITIALIZING RETRIEVER...")
+        # retriever = LangchainDocumentChunksRetriever()
+        # if allow_multimodal_for_images:  
+        #     image_retriever = LangchainDocumentChunksRetriever(image_vector_store)
 
         print("BREAKING QUERY...")
         queries = QueryPreprocessingAgent().break_query(query)
@@ -186,9 +190,9 @@ async def handle_query():
         aggregate_summary = ""
         knowledge_summaries = customer_config["knowledge_summaries"]
         for ks in knowledge_summaries:
-            print(ks.get("artifact_id"))
+            # print(ks.get("artifact_id"))
             aggregate_summary = aggregate_summary + "\n" + ks.get("artifact_summary")
-        print(aggregate_summary)
+        # print(aggregate_summary)
 
         # aggregate_of_general_queries = ""
         retrieved_documents = []
@@ -202,23 +206,31 @@ async def handle_query():
                     # aggregate_of_general_queries = aggregate_of_general_queries + "\n" + q
                 else:
                     print(f'{q} is specific')
-                    retrieved_documents.extend(retriever.retrieve(q))
+                    retrieved_documents.extend(vsi.retrieve(vector_store_name,q))
                     if allow_multimodal_for_images:
-                        top_image_document = image_retriever.retrieve(q)[0]
+                        retrieved_image_documents = vsi.retrieve(image_vector_store_name,q)
+                        if len(retrieved_image_documents) != 0:
+                            top_image_document = retrieved_image_documents[0]
+                            relavancy_check_decision = ImageDescriptionRelavancyCheckAgent().answer_query(q, top_image_document.page_content, top_image_document.page_content)
+                            print(relavancy_check_decision)
+                            if "yes" in relavancy_check_decision.lower():
+                                retrieved_documents.append(top_image_document)
+                                images_array.append(chat_history_manager.append(customer_id, user_id, "bot", "image", rm.get(f'file_system/{top_image_document.metadata.get("source")}')))
+                        else:
+                            raise Exception("[UPLOAD:ERROR] IMAGE VECTOR STORE IS EMPTY, DISABLE allow_multimodal_for_images")
+            else:
+                retrieved_documents.extend(vsi.retrieve(vector_store_name,q))
+                if allow_multimodal_for_images:
+                    retrieved_image_documents = vsi.retrieve(image_vector_store_name,q)
+                    if len(retrieved_image_documents) != 0:
+                        top_image_document = retrieved_image_documents[0]
                         relavancy_check_decision = ImageDescriptionRelavancyCheckAgent().answer_query(q, top_image_document.page_content, top_image_document.page_content)
                         print(relavancy_check_decision)
                         if "yes" in relavancy_check_decision.lower():
                             retrieved_documents.append(top_image_document)
                             images_array.append(chat_history_manager.append(customer_id, user_id, "bot", "image", rm.get(f'file_system/{top_image_document.metadata.get("source")}')))
-            else:
-                retrieved_documents.extend(retriever.retrieve(q))
-                if allow_multimodal_for_images:
-                    top_image_document = image_retriever.retrieve(q)[0]
-                    relavancy_check_decision = ImageDescriptionRelavancyCheckAgent().answer_query(q, top_image_document.page_content, top_image_document.page_content)
-                    print(relavancy_check_decision)
-                    if "yes" in relavancy_check_decision.lower():
-                        retrieved_documents.append(top_image_document)
-                        images_array.append(chat_history_manager.append(customer_id, user_id, "bot", "image", rm.get(f'file_system/{top_image_document.metadata.get("source")}')))
+                    else:
+                        raise Exception("[UPLOAD:ERROR] IMAGE VECTOR STORE IS EMPTY, DISABLE allow_multimodal_for_images")
 
         print(retrieved_documents)
         aggregate_context = LangchainDocumentsMerger().merge_documents_to_string(retrieved_documents)
@@ -257,8 +269,12 @@ async def handle_upload():
         artifacts = body.get("artifacts")
         customer_id = body.get("customer_id")
 
-        upload_count = 0
+        # we can delete the file after embeddings have been created.
+        system_config = rm.get("file_system/database/environment/config.json")
+        persist_uploaded_files = system_config["persist_uploaded_files"]
+        print(persist_uploaded_files)
 
+        # ensuring the required folder exists
         knowledge_base_path = f'database/services/{customer_id}/knowledge_base'
         if not os.path.exists(knowledge_base_path):
             os.makedirs(knowledge_base_path)
@@ -266,24 +282,20 @@ async def handle_upload():
         customer_config = rm.get(f'customer_config/{customer_id}')
         if not customer_config:
             raise Exception("customer config not found. maybe customer doesnt exist. use /config endpoint to create customer config")
-        
         knowledge_summaries = customer_config.get("knowledge_summaries")
+        
+        upload_count = 0
         uploaded_artifacts = []
-
         for artifact in artifacts:
             artifact_id = artifact.get("artifact_id")
-            file = artifact.get("artifact_url")
-            print(artifact_id)
-            print(file)
-
-            # folder_path = f'database/services/{customer_id}/knowledge_base'
-            # download file
-            download_response = requests.get(file, stream = True, allow_redirects=True)
+            artifact_url = artifact.get("artifact_url")
+            
+            download_response = requests.get(artifact_url, stream = True, allow_redirects=True)
             content_type = str(download_response.headers.get("Content-Type"))
             extension = mimetypes.guess_extension(content_type)
-            print(content_type)
-            print(extension)
+            
             download_path = f'database/services/{customer_id}/knowledge_base/{artifact_id}{extension}'
+            
             if download_response.status_code == 200:
                 with open(download_path, "wb") as tmp_file:
                     for chunk in download_response.iter_content(chunk_size=8192):
@@ -300,13 +312,15 @@ async def handle_upload():
                 })
                 image_descriptions = KnowledgeArtifactLoader().load_images_from_pdf(path, artifact_id)
                 chunks = LangchainDocumentsSplitter().split(pages)
-                vector_store = LangchainDocumentChunksEmbedder().embed(f'database/services/{customer_id}/knowledge_base/vector_store',chunks)
-                image_vector_store = LangchainDocumentChunksEmbedder().embed(f'database/services/{customer_id}/knowledge_base/image_vector_store',image_descriptions)
+                vsi.embed(f'{customer_id}_vector_store',chunks)
+                vsi.embed(f'{customer_id}_image_vector_store',image_descriptions)
                 uploaded_artifacts.append({
-                    "artifact_url":file,
+                    "artifact_url":artifact_url,
                     "artifact_id":artifact_id
                 })
                 upload_count = upload_count + 1
+                if not persist_uploaded_files:
+                    os.remove(path)
 
             if extension and extension.lower() == ".txt":
                 path = download_path
@@ -317,13 +331,14 @@ async def handle_upload():
                     "artifact_summary":summary
                 })
                 chunks = LangchainDocumentsSplitter().split(pages)
-                vector_store = LangchainDocumentChunksEmbedder().embed(f'database/services/{customer_id}/knowledge_base/vector_store',chunks)
-                print(vector_store.index.ntotal)
+                vsi.embed(f'{customer_id}_vector_store',chunks)
                 uploaded_artifacts.append({
-                    "artifact_url":file,
+                    "artifact_url":artifact_url,
                     "artifact_id":artifact_id
                 })
                 upload_count = upload_count + 1
+                if not persist_uploaded_files:
+                    os.remove(path)
 
             if extension and extension.lower() in (".png", ".jpg", ".jpeg"):
                 path = download_path
@@ -333,13 +348,13 @@ async def handle_upload():
                     "artifact_id":artifact_id,
                     "artifact_summary":summary
                 })
-                vector_store = LangchainDocumentChunksEmbedder().embed(f'database/services/{customer_id}/knowledge_base/image_vector_store',image_descriptions)
-                print(vector_store.index.ntotal)
+                vsi.embed(f'{customer_id}_image_vector_store',image_descriptions)
                 uploaded_artifacts.append({
-                    "artifact_url":file,
+                    "artifact_url":artifact_url,
                     "artifact_id":artifact_id
                 })
                 upload_count = upload_count + 1
+                # images shall not be removed as they are required during retrieval with allow_multimodal_for_images
 
         rm.set(f'customer_config/{customer_id}', customer_config)
 
@@ -363,32 +378,12 @@ async def handle_delete():
         customer_id = body.get("customer_id")
         artifact_ids = body.get("artifacts")
         no_of_artifacts = len(artifact_ids)
-        artifact_ids = set(artifact_ids)
 
-        vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store')
-        image_vector_store = LangchainDocumentChunksEmbedder().get_vector_store(f'database/services/{customer_id}/knowledge_base/image_vector_store')
-        
-        vector_store_ids_to_be_deleted = [
-        key for key, value in vector_store.docstore._dict.items()
-        if value.metadata.get("artifact_id") in artifact_ids
-        ]
+        # deleting document chunks from the vector store
+        vsi.delete(f"{customer_id}_vector_store","metadata.artifact_id",artifact_ids)
+        vsi.delete(f"{customer_id}_image_vector_store","metadata.artifact_id",artifact_ids)
 
-        # Extracting IDs from image vector store
-        image_vector_store_ids_to_be_deleted = [
-            key for key, value in image_vector_store.docstore._dict.items()
-            if value.metadata.get("artifact_id") in artifact_ids
-        ]
-
-        # soon to be handled by module: VectorStoreInterface.py via ResourceManager.py
-        if not vector_store_ids_to_be_deleted == []:
-            vector_store.delete(ids = vector_store_ids_to_be_deleted)
-            LangchainDocumentChunksEmbedder().set_vector_store(f'database/services/{customer_id}/knowledge_base/vector_store', vector_store)
-
-        if not image_vector_store_ids_to_be_deleted == []:
-            image_vector_store.delete(ids = image_vector_store_ids_to_be_deleted)
-            LangchainDocumentChunksEmbedder().set_vector_store(f'database/services/{customer_id}/knowledge_base/image_vector_store', image_vector_store)
-
-
+        # deleting corresponding  knowledge summaries
         customer_config = rm.get(f'customer_config/{customer_id}')
         knowledge_summaries = customer_config.get("knowledge_summaries")
         customer_config["knowledge_summaries"] = [ks for ks in knowledge_summaries if ks["artifact_id"] not in artifact_ids]

@@ -21,28 +21,29 @@ class ImageToDescriptionAgent:
     def describe(self, base_64_image):
         print("GENERATING DESCRIPTION FOR IMAGE...")
         
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": "You are an expert at providing a detailed description of the provided image."
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": f"data:image/jpeg;base64,{base_64_image}" 
-                    }
-                ]
-            }
-        ]  
+        # messages = [
+        #     {
+        #         "role": "user",
+        #         "content": [
+        #             {
+        #                 "type": "text",
+        #                 "text": "You are an expert at providing a detailed description of the provided image."
+        #             },
+        #             {
+        #                 "type": "image_url",
+        #                 "image_url": f"data:image/jpeg;base64,{base_64_image}" 
+        #             }
+        #         ]
+        #     }
+        # ]  
 
-        response = self.mistral_client.chat.complete(
-            model = self.model,
-            messages = messages
-        ) 
+        # response = self.mistral_client.chat.complete(
+        #     model = self.model,
+        #     messages = messages
+        # ) 
 
-        return response.choices[0].message.content
+        # return response.choices[0].message.content
+        return "some image description..."
 
 class QueryPreprocessingAgent:
     def __init__(self, model = "gemini-1.5-flash"):

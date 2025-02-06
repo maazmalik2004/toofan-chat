@@ -3,105 +3,145 @@ from langchain_mongodb import MongoDBAtlasVectorSearch
 from pymongo import MongoClient
 from uuid import uuid4
 from langchain_core.documents import Document
-
-# mongodb+srv://maazmalik2004:abenzene1234@dspace.odk45.mongodb.net/?retryWrites=true&w=majority&appName=Dspace
+from sklearn.metrics.pairwise import cosine_similarity
+import heapq
 
 class VectorStoreInterface:
-    def __init__(self,embedder_model = "models/embedding-001" ,db_url = "mongodb+srv://Cluster65662:eFpffHVgX1hl@cluster65662.iuo3q.mongodb.net/toofan_local?retryWrites=true&w=majority"):
+    def __init__(self, embedder_model = "models/embedding-001" ,db_url = "mongodb://localhost:27017/", db_name = "toofan_local"):
+        if not db_url and not db_name:
+            raise Exception(f"[VECTOR STORE INTERFACE:ERROR] db_url OR db_name FIELD NOT PROVIDED DURING INITIALIZATION")
+        
         self.embedder = GoogleGenerativeAIEmbeddings(model = embedder_model)
-        self.dimensions = 768
+        self.embedding_dimensions = 768
         self.db_client = MongoClient(db_url)
+        self.db = self.db_client[db_name]
 
-    def embed(self, vector_store, documents):
-        print("EMBEDDING DOCUMENTS TO VECTOR STORE")
-        uuids = [str(uuid4()) for _ in range(len(documents))]
-        vector_store.add_documents(
-            documents = documents,
-            ids = uuids
-        )
-        return vector_store
-    
-    def retrieve(self, vector_store, query):
-        # query_embedding = self.embedder.embed_query(query)
-        retrieved_documents = vector_store.similarity_search(query, k = 5)
-        print(retrieved_documents)
-        return retrieved_documents
-    
-    def collection_exists(self, db_name, collection_name):
-        if collection_name in self.db_client[db_name].list_collection_names():
-            print(f"collection {collection_name} exists in database {db_name}")
-            return True
-        return False
-    
-    def get_vector_store(self, collection, vector_store_name):
-        vector_store = MongoDBAtlasVectorSearch(
-            collection=collection,
-            embedding=self.embedder,
-            index_name=vector_store_name,
-            relevance_score_fn="cosine"
-        )
-        print(vector_store)
-        return vector_store
-    
-    def get_collection(self, db_name, collection_name):
-        collection = self.db_client[db_name][collection_name]
-        print(collection)
+    # vector store will be equivalent to a collection.
+    # the name of the vector_store/collection will be {customer_id}_{vector_store/image_vector_store}
+    def get_vector_store(self, vector_store_name):
+        print(f"[VECTOR STORE INTERFACE] GETTING VECTOR STORE : {vector_store_name}")
+        collection_name = vector_store_name
+        collection = self.db[collection_name]
+        
+        if not collection_name in self.db.list_collection_names():
+            print(f"[VECTOR STORE INTERFACE] CREATING VECTOR STORE SINCE IT DOESN'T ALREADY EXIST : {vector_store_name}")
+            self.db.create_collection(collection_name)
+        
+        return collection
+
+    def embed(self, vector_store_name, documents):
+        print(f"[VECTOR STORE INTERFACE] EMBEDDING {len(documents)} DOCUMENTS : {vector_store_name}")
+        collection_name = vector_store_name
+        collection = self.get_vector_store(collection_name)
+
+        to_be_inserted = []
+        for d in documents:
+            print(f"[VECTOR STORE INTERFACE] EMBEDDING CHUNK TO VECTOR STORE : {vector_store_name}")
+            vector = self.embedder.embed_query(d.page_content)
+            d = d.dict()
+            
+            d["embedding"] = vector
+            id = str(uuid4())
+            d["id"] = id
+            d["metadata"]["id"] = id
+
+            to_be_inserted.append(d)
+
+        collection.insert_many(to_be_inserted)
         return collection
     
-    def create_vector_store(self, collection, vector_store_name):
-        vector_store = MongoDBAtlasVectorSearch(
-            collection=collection,
-            embedding=self.embedder,
-            index_name=vector_store_name,
-            relevance_score_fn="cosine"
-        )
+    def retrieve(self, vector_store_name, query, k=5):
+        print(f"[VECTOR STORE INTERFACE] RETRIEVING TOP {k} MOST SIMILAR DOCUMENTS : {vector_store_name}")
+        query_vector = self.embedder.embed_query(query)
 
-        vector_store.create_vector_search_index(dimensions=self.dimensions)
+        collection_name = vector_store_name
+        collection = self.get_vector_store(collection_name)
+        counter = 0
+        min_heap = []
+        # iterating over all documents in the vector store
+        for d in collection.find({}):
+            similarity = cosine_similarity([query_vector], [d["embedding"]])[0][0]
+            print(d["page_content"])
+            print(f"COSINE SIMILARITY : {similarity}\n")
 
-        # default_document = [Document(
-        #     page_content="default",
-        #     metadata = {
-        #         "source" : "default"
-        #     }
-        # )]
+            if len(min_heap) < k:
+                print("won")
+                heapq.heappush(min_heap, (similarity, counter, d))
+            else:
+                print("gun")
+                heapq.heappushpop(min_heap, (similarity, counter, d))
+            counter = counter+1
 
-        # uuids = [str(uuid4()) for _ in range(len(default_document))]
-        # vector_store.add_documents(documents=default_document, ids=uuids)
+        most_similar_documents = [doc for _,_, doc in sorted(min_heap, reverse=True)]
 
-        print(vector_store)
-        return vector_store
+        print("AFTER ITERATION")
 
-# cluster(url)
-#     database toofan
-#         collection customer 1234 -  vector_store, 
-#                                     image-vector-store
-#         collection customer 0000 -  vector_store, 
-#                                     image-vector-store
+        langchain_documents = []
+        for d in most_similar_documents:
+            document_data = {key:d[key] for key in d}
+            langchain_documents.append(Document(
+                **document_data
+            ))
+        
+        print(f"[VECTOR STORE INTERFACE] RETRIEVED DOCUMENTS : {langchain_documents}")
+        return langchain_documents
+    
+    def delete(self, vector_store_name, ids):
+        print(f"[VECTOR STORE INTERFACE] DELETING DOCUMENTS : {ids}")
+        collection_name = vector_store_name
+        collection = self.get_vector_store(collection_name)
 
-vsi = VectorStoreInterface()
-collection = vsi.get_collection("customer_1","vector_store")
+        collection.delete_many({
+            "id":{
+                "$in":ids
+            }
+        })
 
-vector_store = vsi.create_vector_store(collection, "vector_store")
+        return collection
 
-# vector_store = vsi.get_vector_store(collection, "vector_store")
-# # for doc in collection.find():
-# #     print(doc)
+    def delete_by_field(self, vector_store_name, key, values):
+        collection_name = vector_store_name
+        collection = self.get_vector_store(collection_name)
 
-circle_documents = [
-    Document(page_content="A circle is a perfect geometric shape where all points are equidistant from the center.", metadata={"source": "geometry_basics.txt", "topic": "circle"}),
-    Document(page_content="The circumference of a circle is calculated by multiplying the diameter by pi (π).", metadata={"source": "circle_math.txt", "topic": "circle_properties"}),
-    Document(page_content="Circles have infinite lines of symmetry that pass through their center.", metadata={"source": "symmetry_guide.txt", "topic": "circle_symmetry"})
-]
+        field_exists = collection.find_one({key: {"$exists": True}}) is not None
 
-# # # Documents about aliens
-# alien_documents = [
-#     Document(page_content="Extraterrestrial life could exist in various forms beyond our current understanding of biology.", metadata={"source": "astrobiology_research.txt", "topic": "alien_life"}),
-#     Document(page_content="The Drake Equation attempts to estimate the number of communicative alien civilizations in our galaxy.", metadata={"source": "seti_reports.txt", "topic": "alien_probability"}),
-#     Document(page_content="Potential alien life might exist in extreme environments, such as on moons with subsurface oceans.", metadata={"source": "exoplanet_studies.txt", "topic": "alien_habitats"})
+        if not field_exists:
+            raise Exception(f"[VECTOR STORE INTERFACE:ERROR] INVALID FIELD PROVIDED : {key}")
+        
+        collection.delete_many({
+            key: {
+                "$in": values
+            }
+        })
+
+        return collection
+
+    
+# vsi = VectorStoreInterface(db_url = "mongodb://localhost:27017/", db_name = "toofan_local")
+# print(vsi)
+
+# from langchain.schema import Document
+
+# documents = [
+#     # Existing circle-related documents
+#     Document(page_content="A circle is a perfect geometric shape where all points are equidistant from the center.", metadata={"source": "geometry_basics.txt", "topic": "circle"}),
+#     Document(page_content="The circumference of a circle is calculated by multiplying the diameter by pi (π).", metadata={"source": "circle_math.txt", "topic": "circle_properties"}),
+#     Document(page_content="Circles have infinite lines of symmetry that pass through their center.", metadata={"source": "symmetry_guide.txt", "topic": "circle_symmetry"}),
+
+#     # New random topics
+#     Document(page_content="Honeybees communicate through a unique dance known as the waggle dance to convey the location of flowers.", metadata={"source": "bee_facts.txt", "topic": "biology"}),
+#     Document(page_content="The Eiffel Tower can grow taller in the summer due to the expansion of metal in heat.", metadata={"source": "eiffel_tower.txt", "topic": "physics"}),
+#     Document(page_content="Quantum entanglement is a phenomenon where two particles remain connected regardless of distance.", metadata={"source": "quantum_physics.txt", "topic": "science"}),
+#     Document(page_content="Mount Everest, the highest mountain on Earth, grows approximately 4 millimeters taller each year due to tectonic activity.", metadata={"source": "mountains.txt", "topic": "geography"}),
+#     Document(page_content="The Mona Lisa has no clearly defined eyebrows because they were either never painted or have faded over time.", metadata={"source": "art_history.txt", "topic": "art"}),
+#     Document(page_content="Shakespeare invented over 1,700 words, including 'bedazzled' and 'swagger'.", metadata={"source": "literature_facts.txt", "topic": "language"}),
+#     Document(page_content="Octopuses have three hearts, and their blood is blue due to the presence of hemocyanin.", metadata={"source": "marine_life.txt", "topic": "biology"}),
+#     Document(page_content="Bananas are berries, but strawberries are not, according to botanical definitions.", metadata={"source": "fruit_facts.txt", "topic": "botany"}),
+#     Document(page_content="Chess grandmasters can burn up to 6,000 calories a day due to intense mental exertion.", metadata={"source": "chess_trivia.txt", "topic": "games"}),
+#     Document(page_content="The speed of light is approximately 299,792,458 meters per second in a vacuum.", metadata={"source": "physics_basics.txt", "topic": "science"})
 # ]
 
-vsi.embed(vector_store, circle_documents)
-# vsi.embed(vector_store, alien_documents)
-# # # vsi.embed(image_vector_store, alien_documents)
-
-# vsi.retrieve(vector_store, "A circle is a perfect geometric shape where all points")
+# # vsi.embed("1234_vector_store", documents)
+# # vsi.retrieve("1234_vector_store", "circle", k=5)
+# # vsi.delete("1234_vector_store",["91f3567a-04df-46ee-bebe-e8ba1a03ce79", "20be7bd8-de23-4374-8b54-6a6415ee1004", "9e0e685e-de51-4fcc-ae8a-8b5f90f2cd38"])
+# vsi.delete_by_field("1234_vector_store","id",["3fe45f97-d778-41bb-ab2e-bc43d875cc42", "87bd25c9-0ce4-46ba-aad4-00034316902e", "98243f5e-a60d-46ca-a946-45c52000bcd7"])
